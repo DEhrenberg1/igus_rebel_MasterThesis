@@ -1,15 +1,17 @@
-#VRML_SIM R2022b utf8
+#VRML_SIM R2023b utf8
 
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2022b/projects/objects/backgrounds/protos/TexturedBackground.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2022b/projects/objects/backgrounds/protos/TexturedBackgroundLight.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2022b/projects/objects/floors/protos/CircleArena.proto"
-IMPORTABLE EXTERNPROTO "../proto/Rebel.proto"
+IMPORTABLE EXTERNPROTO "/home/david/ros2_ws/src/webots_simulation_test/igus_rebel/rebel_webots/proto/Rebel.proto"
+IMPORTABLE EXTERNPROTO "/home/david/ros2_ws/src/webots_simulation_test/igus_rebel/rebel_webots/proto/IgusRebel.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023b/projects/devices/robotiq/protos/Robotiq2f85Gripper.proto"
 
 WorldInfo {
 }
 Viewpoint {
-  orientation -0.33185733874619844 -0.09874274160469809 0.9381474178937331 3.686018050088086
-  position 1.700313773507203 1.0549607538959629 1.4846240848267684
+  orientation -0.08343869730488784 0.030332856790795056 0.9960511541035292 2.2812937280903514
+  position 1.379755849422517 -1.262945050468729 0.7757643263234983
   follow "igus_rebel"
 }
 TexturedBackground {
@@ -18,7 +20,50 @@ TexturedBackgroundLight {
 }
 CircleArena {
 }
-Rebel {
+Solid {
+  translation 0.4 0.4 0.025
+  rotation 0 0 -1 -3.1415853071795863
+  children [
+    DEF block1 Shape {
+      appearance PBRAppearance {
+        baseColor 0 0 1
+        roughness 1
+      }
+      geometry Box {
+        size 0.05 0.05 0.05
+      }
+    }
+  ]
+  name "block1"
+  boundingObject USE block1
+  physics Physics {
+  }
+  recognitionColors [
+    0 0 0
+  ]
+}
+Solid {
+  translation 0.4 0 0.025
+  children [
+    DEF block2 Shape {
+      appearance PBRAppearance {
+        baseColor 1 0 0
+      }
+      geometry Box {
+        size 0.05 0.05 0.05
+      }
+    }
+  ]
+  name "block2"
+  boundingObject USE block2
+  physics Physics {
+  }
+}
+IgusRebel {
   name "igus_rebel"
   controller "<extern>"
+  toolSlot [
+    Robotiq2f85Gripper {
+    }
+  ]
 }
