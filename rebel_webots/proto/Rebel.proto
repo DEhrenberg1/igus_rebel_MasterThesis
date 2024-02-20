@@ -28,7 +28,7 @@ PROTO Rebel [
       Solid {
         children [
           DEF Robolink_RebeL_000_visual CadShape {
-            url "../meshes/robolink_rebel/Robolink_RebeL_000.dae"
+            url "../../rebel_description/meshes/robolink_rebel/Robolink_RebeL_000.dae"
           }
           HingeJoint {
             jointParameters HingeJointParameters {
@@ -56,7 +56,7 @@ PROTO Rebel [
                   rotation -0.000000 0.000000 1.000000 3.141600
                   children [
                     DEF Robolink_RebeL_001_visual CadShape {
-                      url "../meshes/robolink_rebel/Robolink_RebeL_001.dae"
+                      url "../../rebel_description/meshes/robolink_rebel/Robolink_RebeL_001.dae"
                     }
                   ]
                 }
@@ -85,7 +85,7 @@ PROTO Rebel [
                         rotation -1.000000 0.000000 0.000000 1.570700
                         children [
                           DEF Robolink_RebeL_002_0_visual CadShape {
-                            url "../meshes/robolink_rebel/Robolink_RebeL_002_0.dae"
+                            url "../../rebel_description/meshes/robolink_rebel/Robolink_RebeL_002_0.dae"
                           }
                         ]
                       }
@@ -97,7 +97,7 @@ PROTO Rebel [
                             rotation -0.000000 0.000000 1.000000 3.141600
                             children [
                               DEF Robolink_RebeL_002_1_visual CadShape {
-                                url "../meshes/robolink_rebel/Robolink_RebeL_002_1.dae"
+                                url "../../rebel_description/meshes/robolink_rebel/Robolink_RebeL_002_1.dae"
                               }
                             ]
                           }
@@ -110,7 +110,7 @@ PROTO Rebel [
                                 rotation 0.000000 -0.000000 -1.000000 3.141600
                                 children [
                                   DEF Robolink_RebeL_002_2_visual CadShape {
-                                    url "../meshes/robolink_rebel/Robolink_RebeL_002_2.dae"
+                                    url "../../rebel_description/meshes/robolink_rebel/Robolink_RebeL_002_2.dae"
                                   }
                                 ]
                               }
@@ -139,7 +139,7 @@ PROTO Rebel [
                                       rotation -1.000000 0.000000 0.000000 1.570700
                                       children [
                                         DEF Robolink_RebeL_003_visual CadShape {
-                                          url "../meshes/robolink_rebel/Robolink_RebeL_003.dae"
+                                          url "../../rebel_description/meshes/robolink_rebel/Robolink_RebeL_003.dae"
                                         }
                                       ]
                                     }
@@ -167,7 +167,7 @@ PROTO Rebel [
                                             translation 0.000000 0.000000 -0.003125
                                             children [
                                               DEF Robolink_RebeL_004_visual CadShape {
-                                                url "../meshes/robolink_rebel/Robolink_RebeL_004.dae"
+                                                url "../../rebel_description/meshes/robolink_rebel/Robolink_RebeL_004.dae"
                                               }
                                             ]
                                           }
@@ -196,7 +196,7 @@ PROTO Rebel [
                                                   rotation 0.577178 0.577234 -0.577638 2.093880
                                                   children [
                                                     DEF Robolink_RebeL_005_visual CadShape {
-                                                      url "../meshes/robolink_rebel/Robolink_RebeL_005.dae"
+                                                      url "../../rebel_description/meshes/robolink_rebel/Robolink_RebeL_005.dae"
                                                     }
                                                   ]
                                                 }
@@ -225,14 +225,14 @@ PROTO Rebel [
                                                         rotation 0.000000 -1.000000 0.000000 1.570000
                                                         children [
                                                           DEF Robolink_RebeL_006_visual CadShape {
-                                                            url "../meshes/robolink_rebel/Robolink_RebeL_006.dae"
+                                                            url "../../rebel_description/meshes/robolink_rebel/Robolink_RebeL_006.dae"
                                                           }
                                                         ]
                                                       }
                                                     ]
                                                     name "rebel_link8"
                                                     boundingObject DEF Robolink_RebeL_006 Mesh {
-                                                      url "../meshes/robolink_rebel/Robolink_RebeL_006.dae"
+                                                      url "../../rebel_description/meshes/robolink_rebel/Robolink_RebeL_006.dae"
                                                     }
                                                     physics Physics {
                                                       density -1
@@ -248,7 +248,7 @@ PROTO Rebel [
                                               ]
                                               name "rebel_link7"
                                               boundingObject DEF Robolink_RebeL_005 Mesh {
-                                                url "../meshes/robolink_rebel/Robolink_RebeL_005.dae"
+                                                url "../../rebel_description/meshes/robolink_rebel/Robolink_RebeL_005.dae"
                                               }
                                               physics Physics {
                                                 density -1
@@ -264,7 +264,7 @@ PROTO Rebel [
                                         ]
                                         name "rebel_link6"
                                         boundingObject DEF Robolink_RebeL_004 Mesh {
-                                          url "../meshes/robolink_rebel/Robolink_RebeL_004.dae"
+                                          url "../../rebel_description/meshes/robolink_rebel/Robolink_RebeL_004.dae"
                                         }
                                         physics Physics {
                                           density -1
@@ -280,7 +280,7 @@ PROTO Rebel [
                                   ]
                                   name "rebel_link5"
                                   boundingObject DEF Robolink_RebeL_003 Mesh {
-                                    url "../meshes/robolink_rebel/Robolink_RebeL_003.dae"
+                                    url "../../rebel_description/meshes/robolink_rebel/Robolink_RebeL_003.dae"
                                   }
                                   physics Physics {
                                     density -1
@@ -296,7 +296,7 @@ PROTO Rebel [
                             ]
                             name "rebel_link4"
                             boundingObject DEF Robolink_RebeL_002_2 Mesh {
-                              url "../meshes/robolink_rebel/Robolink_RebeL_002_2.dae"
+                              url "../../rebel_description/meshes/robolink_rebel/Robolink_RebeL_002_2.dae"
                             }
                             physics Physics {
                               density -1
@@ -311,7 +311,7 @@ PROTO Rebel [
                         ]
                         name "rebel_link3"
                         boundingObject DEF Robolink_RebeL_002_1 Mesh {
-                          url "../meshes/robolink_rebel/Robolink_RebeL_002_1.dae"
+                          url "../../rebel_description/meshes/robolink_rebel/Robolink_RebeL_002_1.dae"
                         }
                         physics Physics {
                           density -1
@@ -326,7 +326,7 @@ PROTO Rebel [
                     ]
                     name "rebel_link2"
                     boundingObject DEF Robolink_RebeL_002_0 Mesh {
-                      url "../meshes/robolink_rebel/Robolink_RebeL_002_0.dae"
+                      url "../../rebel_description/meshes/robolink_rebel/Robolink_RebeL_002_0.dae"
                     }
                     physics Physics {
                       density -1
@@ -342,7 +342,7 @@ PROTO Rebel [
               ]
               name "rebel_link1"
               boundingObject DEF Robolink_RebeL_001 Mesh {
-                url "../meshes/robolink_rebel/Robolink_RebeL_001.dae"
+                url "../../rebel_description/meshes/robolink_rebel/Robolink_RebeL_001.dae"
               }
               physics Physics {
                 density -1
@@ -358,7 +358,7 @@ PROTO Rebel [
         ]
         name "base_link"
         boundingObject DEF Robolink_RebeL_000 Mesh {
-          url "../meshes/robolink_rebel/Robolink_RebeL_000.dae"
+          url "../../rebel_description/meshes/robolink_rebel/Robolink_RebeL_000.dae"
         }
         physics Physics {
           density -1
