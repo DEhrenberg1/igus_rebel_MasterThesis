@@ -25,8 +25,7 @@ class RebelWebotsDriver():
         self.__joint5 = self.__robot.getDevice('joint5')
         self.__joint6 = self.__robot.getDevice('joint6')
         self.__left_finger_joint = self.__robot.getDevice('ROBOTIQ 2F-85 Gripper::left finger joint')
-        self.__right_finger_joint = self.__robot.getDevice('ROBOTIQ 2F-85 Gripper::right finger joint')
-        self.__positions = [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
+        self.__positions = [0.0,0.0,0.0,0.0,0.0,0.0,0.0]
         rclpy.init(args=None)
         self.__node = rclpy.create_node('igus_webots_driver')
         self.__node.create_subscription(JointTrajectory, 'joint_trajectory/command', self.__trajectory_callback, 1)
@@ -40,7 +39,6 @@ class RebelWebotsDriver():
         self.__joint5.setPosition(self.__positions[4])
         self.__joint6.setPosition(self.__positions[5])
         self.__left_finger_joint.setPosition(self.__positions[6])
-        self.__right_finger_joint.setPosition(self.__positions[7])
 
     def step(self):
         rclpy.spin_once(self.__node, timeout_sec=0)
@@ -53,4 +51,3 @@ def main(args=None):
 
 if __name__ == '__main__':
     main()
-
