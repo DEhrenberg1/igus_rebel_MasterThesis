@@ -1,0 +1,25 @@
+moveit_setup_assistant_config:
+  urdf:
+    package: rebel_description
+    relative_path: urdf/igus_rebel_robot.urdf.xacro
+  srdf:
+    relative_path: config/igus_rebel.srdf
+  package_settings:
+    author_name: David Ehrenberg
+    author_email: david.ehrenberg@rwth-aachen.de
+    generated_timestamp: 1708619722
+  control_xacro:
+    command:
+      - position
+    state:
+      - position
+      - velocity
+  modified_urdf:
+    xacros:
+      - control_xacro
+  control_xacro:
+    command:
+      - position
+    state:
+      - position
+      - velocity
