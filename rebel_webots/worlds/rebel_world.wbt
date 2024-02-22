@@ -3,8 +3,8 @@
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2022b/projects/objects/backgrounds/protos/TexturedBackground.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2022b/projects/objects/backgrounds/protos/TexturedBackgroundLight.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2022b/projects/objects/floors/protos/CircleArena.proto"
-IMPORTABLE EXTERNPROTO "/home/david/ros2_ws/src/webots_simulation_test/igus_rebel/rebel_webots/proto/Rebel.proto"
-IMPORTABLE EXTERNPROTO "/home/david/ros2_ws/src/webots_simulation_test/igus_rebel/rebel_webots/proto/IgusRebel.proto"
+IMPORTABLE EXTERNPROTO "../proto/Rebel.proto"
+IMPORTABLE EXTERNPROTO "../proto/IgusRebel.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023b/projects/devices/robotiq/protos/Robotiq2f85Gripper.proto"
 
 WorldInfo {

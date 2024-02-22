@@ -28,7 +28,7 @@ PROTO IgusRebel [
     selfCollision IS selfCollision
     children [
       DEF Robolink_RebeL_000_visual CadShape {
-        url "/home/david/ros2_ws/src/webots_simulation_test/igus_rebel/rebel_description/meshes/robolink_rebel/Robolink_RebeL_000.dae"
+        url "../meshes/robolink_rebel/Robolink_RebeL_000.dae"
       }
       HingeJoint {
         jointParameters HingeJointParameters {
@@ -56,7 +56,7 @@ PROTO IgusRebel [
               rotation -0.000000 0.000000 1.000000 3.141600
               children [
                 DEF Robolink_RebeL_001_visual CadShape {
-                  url "/home/david/ros2_ws/src/webots_simulation_test/igus_rebel/rebel_description/meshes/robolink_rebel/Robolink_RebeL_001.dae"
+                  url "../meshes/robolink_rebel/Robolink_RebeL_001.dae"
                 }
               ]
             }
@@ -85,7 +85,7 @@ PROTO IgusRebel [
                     rotation -1.000000 0.000000 0.000000 1.570700
                     children [
                       DEF Robolink_RebeL_002_0_visual CadShape {
-                        url "/home/david/ros2_ws/src/webots_simulation_test/igus_rebel/rebel_description/meshes/robolink_rebel/Robolink_RebeL_002_0.dae"
+                        url "../meshes/robolink_rebel/Robolink_RebeL_002_0.dae"
                       }
                     ]
                   }
@@ -97,7 +97,7 @@ PROTO IgusRebel [
                         rotation -0.000000 0.000000 1.000000 3.141600
                         children [
                           DEF Robolink_RebeL_002_1_visual CadShape {
-                            url "/home/david/ros2_ws/src/webots_simulation_test/igus_rebel/rebel_description/meshes/robolink_rebel/Robolink_RebeL_002_1.dae"
+                            url "../meshes/robolink_rebel/Robolink_RebeL_002_1.dae"
                           }
                         ]
                       }
@@ -110,7 +110,7 @@ PROTO IgusRebel [
                             rotation 0.000000 -0.000000 -1.000000 3.141600
                             children [
                               DEF Robolink_RebeL_002_2_visual CadShape {
-                                url "/home/david/ros2_ws/src/webots_simulation_test/igus_rebel/rebel_description/meshes/robolink_rebel/Robolink_RebeL_002_2.dae"
+                                url "../meshes/robolink_rebel/Robolink_RebeL_002_2.dae"
                               }
                             ]
                           }
@@ -139,7 +139,7 @@ PROTO IgusRebel [
                                   rotation -1.000000 0.000000 0.000000 1.570700
                                   children [
                                     DEF Robolink_RebeL_003_visual CadShape {
-                                      url "/home/david/ros2_ws/src/webots_simulation_test/igus_rebel/rebel_description/meshes/robolink_rebel/Robolink_RebeL_003.dae"
+                                      url "../meshes/robolink_rebel/Robolink_RebeL_003.dae"
                                     }
                                   ]
                                 }
@@ -167,7 +167,7 @@ PROTO IgusRebel [
                                         translation 0.000000 0.000000 -0.003125
                                         children [
                                           DEF Robolink_RebeL_004_visual CadShape {
-                                            url "/home/david/ros2_ws/src/webots_simulation_test/igus_rebel/rebel_description/meshes/robolink_rebel/Robolink_RebeL_004.dae"
+                                            url "../meshes/robolink_rebel/Robolink_RebeL_004.dae"
                                           }
                                         ]
                                       }
@@ -196,7 +196,7 @@ PROTO IgusRebel [
                                               rotation 0.577178 0.577234 -0.577638 2.093880
                                               children [
                                                 DEF Robolink_RebeL_005_visual CadShape {
-                                                  url "/home/david/ros2_ws/src/webots_simulation_test/igus_rebel/rebel_description/meshes/robolink_rebel/Robolink_RebeL_005.dae"
+                                                  url "../meshes/robolink_rebel/Robolink_RebeL_005.dae"
                                                 }
                                               ]
                                             }
@@ -225,7 +225,7 @@ PROTO IgusRebel [
                                                     rotation 0.000000 -1.000000 0.000000 1.570000
                                                     children [
                                                       DEF Robolink_RebeL_006_visual CadShape {
-                                                        url "/home/david/ros2_ws/src/webots_simulation_test/igus_rebel/rebel_description/meshes/robolink_rebel/Robolink_RebeL_006.dae"
+                                                        url "../meshes/robolink_rebel/Robolink_RebeL_006.dae"
                                                       }
                                                     ]
                                                   }
@@ -239,7 +239,7 @@ PROTO IgusRebel [
                                                   rotation 0.000000 -1.000000 0.000000 1.570000
                                                   children [
                                                     DEF Robolink_RebeL_006 Mesh {
-                                                      url "/home/david/ros2_ws/src/webots_simulation_test/igus_rebel/rebel_description/meshes/robolink_rebel/Robolink_RebeL_006.dae"
+                                                      url "../meshes/robolink_rebel/Robolink_RebeL_006.dae"
                                                     }
                                                   ]
                                                 }
@@ -261,7 +261,7 @@ PROTO IgusRebel [
                                             rotation 0.577178 0.577234 -0.577638 2.093880
                                             children [
                                               DEF Robolink_RebeL_005 Mesh {
-                                                url "/home/david/ros2_ws/src/webots_simulation_test/igus_rebel/rebel_description/meshes/robolink_rebel/Robolink_RebeL_005.dae"
+                                                url "../meshes/robolink_rebel/Robolink_RebeL_005.dae"
                                               }
                                             ]
                                           }
@@ -282,7 +282,7 @@ PROTO IgusRebel [
                                       translation 0.000000 0.000000 -0.003125
                                       children [
                                         DEF Robolink_RebeL_004 Mesh {
-                                          url "/home/david/ros2_ws/src/webots_simulation_test/igus_rebel/rebel_description/meshes/robolink_rebel/Robolink_RebeL_004.dae"
+                                          url "../meshes/robolink_rebel/Robolink_RebeL_004.dae"
                                         }
                                       ]
                                     }
@@ -304,7 +304,7 @@ PROTO IgusRebel [
                                 rotation -1.000000 0.000000 0.000000 1.570700
                                 children [
                                   DEF Robolink_RebeL_003 Mesh {
-                                    url "/home/david/ros2_ws/src/webots_simulation_test/igus_rebel/rebel_description/meshes/robolink_rebel/Robolink_RebeL_003.dae"
+                                    url "../meshes/robolink_rebel/Robolink_RebeL_003.dae"
                                   }
                                 ]
                               }
@@ -326,7 +326,7 @@ PROTO IgusRebel [
                           rotation 0.000000 -0.000000 -1.000000 3.141600
                           children [
                             DEF Robolink_RebeL_002_2 Mesh {
-                              url "/home/david/ros2_ws/src/webots_simulation_test/igus_rebel/rebel_description/meshes/robolink_rebel/Robolink_RebeL_002_2.dae"
+                              url "../meshes/robolink_rebel/Robolink_RebeL_002_2.dae"
                             }
                           ]
                         }
@@ -347,7 +347,7 @@ PROTO IgusRebel [
                       rotation -0.000000 0.000000 1.000000 3.141600
                       children [
                         DEF Robolink_RebeL_002_1 Mesh {
-                          url "/home/david/ros2_ws/src/webots_simulation_test/igus_rebel/rebel_description/meshes/robolink_rebel/Robolink_RebeL_002_1.dae"
+                          url "../meshes/robolink_rebel/Robolink_RebeL_002_1.dae"
                         }
                       ]
                     }
@@ -368,7 +368,7 @@ PROTO IgusRebel [
                   rotation -1.000000 0.000000 0.000000 1.570700
                   children [
                     DEF Robolink_RebeL_002_0 Mesh {
-                      url "/home/david/ros2_ws/src/webots_simulation_test/igus_rebel/rebel_description/meshes/robolink_rebel/Robolink_RebeL_002_0.dae"
+                      url "../meshes/robolink_rebel/Robolink_RebeL_002_0.dae"
                     }
                   ]
                 }
@@ -390,7 +390,7 @@ PROTO IgusRebel [
             rotation -0.000000 0.000000 1.000000 3.141600
             children [
               DEF Robolink_RebeL_001 Mesh {
-                url "/home/david/ros2_ws/src/webots_simulation_test/igus_rebel/rebel_description/meshes/robolink_rebel/Robolink_RebeL_001.dae"
+                url "../meshes/robolink_rebel/Robolink_RebeL_001.dae"
               }
             ]
           }
@@ -408,7 +408,7 @@ PROTO IgusRebel [
     ]
     name IS name
     boundingObject DEF Robolink_RebeL_000 Mesh {
-      url "/home/david/ros2_ws/src/webots_simulation_test/igus_rebel/rebel_description/meshes/robolink_rebel/Robolink_RebeL_000.dae"
+      url "../meshes/robolink_rebel/Robolink_RebeL_000.dae"
     }
 
   }
