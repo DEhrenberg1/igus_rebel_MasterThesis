@@ -245,9 +245,16 @@
       <inertia ixx="0.03" iyy="0.03" izz="0.03" ixy="0.0" ixz="0.0" iyz="0.0" />
     </inertial>
   </link>
-  <ros2_control name="igus_rebel" type="system">
+  
+  <webots>
+    <plugin type="webots_ros2_control::Ros2Control">
+      <parameters>package://rebel_webots/urdf/rebel_ros2_control_params.yaml</parameters>
+    </plugin>
+  </webots>
+
+  <ros2_control name="WebotsControl" type="system">
     <hardware>
-    <plugin>fake_components/GenericSystem</plugin>
+    <plugin>webots_ros2_control::Ros2ControlSystem</plugin>
       <param name="ip_address">"192.168.3.11"</param>
       <param name="port">3920</param>
     </hardware>

@@ -9,6 +9,7 @@ install(DIRECTORY launch
                   worlds
                   proto
                   urdf
+                  config
         DESTINATION share/${PROJECT_NAME}
 )
 

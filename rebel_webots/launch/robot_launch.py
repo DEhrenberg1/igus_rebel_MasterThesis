@@ -36,10 +36,16 @@ def generate_launch_description():
     webots = WebotsLauncher(
         world=os.path.join(package_dir, 'worlds', 'rebel_world.wbt')
     )
+
+    rebel_ros2_control_params=os.path.join(package_dir, 'config', 'rebel_ros2_control_params.yaml')
+
     rebel_webots_driver = WebotsController(
         robot_name='igus_rebel',
         parameters=[
             {'robot_description': robot_description},
+            {"use_sim_time": True},
+            {"set_robot_state_publisher": False},
+            rebel_ros2_control_params,
         ]
     )
     return LaunchDescription([
