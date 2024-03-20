@@ -2,9 +2,4 @@
 <robot xmlns:xacro="http://wiki.ros.org/xacro"
        name="igus_rebel" >
   <xacro:include filename="$(find rebel_description)/urdf/igus_rebel_robot.urdf.xacro"/>
-  <xacro:igus_rebel_control arm_id="igus_rebel"/>
-
-  <webots>
-      <plugin type="rebel_webots.rebel_webots_driver.RebelWebotsDriver" />
-  </webots>
 </robot>

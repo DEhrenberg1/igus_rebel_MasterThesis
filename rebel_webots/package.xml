@@ -8,6 +8,7 @@
   <license>Apache-2.0</license>
 
   <depend>rclpy</depend>
+  <depend>rebel_description</depend>
   <depend>geometry_msgs</depend>
   <depend>webots_ros2_driver</depend>
 
