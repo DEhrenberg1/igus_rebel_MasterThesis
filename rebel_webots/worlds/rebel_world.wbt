@@ -11,8 +11,8 @@ EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023b/project
 WorldInfo {
 }
 Viewpoint {
-  orientation -0.08343869730488784 0.030332856790795056 0.9960511541035292 2.2812937280903514
-  position 1.379755849422517 -1.262945050468729 0.7757643263234983
+  orientation -0.2553612592105337 0.08928471129679211 0.9627143229551846 2.439512519695667
+  position 1.3006548830051277 -1.238734825195214 0.9179092817519985
   follow "igus_rebel"
 }
 TexturedBackground {
@@ -63,4 +63,9 @@ Solid {
 IgusRebel {
   name "igus_rebel"
   controller "<extern>"
+}
+DEF PositionPublisher Robot {
+  name "PositionPublisher"
+  controller "PositionPublisher"
+  supervisor TRUE
 }

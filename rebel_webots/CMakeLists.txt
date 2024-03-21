@@ -10,6 +10,7 @@ install(DIRECTORY launch
                   proto
                   urdf
                   config
+                  controllers
         DESTINATION share/${PROJECT_NAME}
 )
 
