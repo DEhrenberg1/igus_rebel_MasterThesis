@@ -10,15 +10,13 @@ EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023b/project
 
 WorldInfo {
   contactProperties [
-    ContactProperties{
-      material1 "default"
-      material2 "default"
+    ContactProperties {
       maxContactJoints 1000
     }
   ]
 }
 Viewpoint {
-  orientation -0.08343869730488784 0.030332856790795056 0.9960511541035292 2.2812937280903514
+  orientation -0.17944652569598293 0.06902414029405438 0.9813432694385323 2.344280879141333
   position 1.379755849422517 -1.262945050468729 0.7757643263234983
   follow "igus_rebel"
 }
@@ -71,4 +69,8 @@ IgusRebel {
   name "igus_rebel"
   controller "<extern>"
   supervisor TRUE
+  toolSlot [
+    Robotiq2f85Gripper {
+    }
+  ]
 }

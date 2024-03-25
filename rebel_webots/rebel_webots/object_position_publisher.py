@@ -15,7 +15,7 @@
 import rclpy
 from geometry_msgs.msg import Point
 
-class RebelWebotsDriver():
+class ObjectPositionPublisher():
     def init(self, webots_node, properties):
         self.__robot = webots_node.robot
         self.__block1 = self.__robot.getFromDef('block1_solid')
@@ -42,7 +42,7 @@ class RebelWebotsDriver():
 
 def main(args=None):
     rclpy.init(args=args)
-    node = RebelWebotsDriver()
+    node = ObjectPositionPublisher()
     rclpy.spin(node)
     rclpy.shutdown()
 
