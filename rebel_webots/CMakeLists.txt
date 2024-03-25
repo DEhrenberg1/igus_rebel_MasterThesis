@@ -18,6 +18,7 @@ ament_python_install_package(${PROJECT_NAME})
 
 
 # Create a symbolic link to rebel_description meshes
+file(MAKE_DIRECTORY "${CMAKE_INSTALL_PREFIX}/share/${PROJECT_NAME}")
 execute_process(
     COMMAND ${CMAKE_COMMAND} -E create_symlink
     ${rebel_description_DIR}/../meshes
