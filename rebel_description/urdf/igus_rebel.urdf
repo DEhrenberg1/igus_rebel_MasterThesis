@@ -250,6 +250,7 @@
     <plugin type="webots_ros2_control::Ros2Control">
       <parameters>package://rebel_webots/urdf/rebel_ros2_control_params.yaml</parameters>
     </plugin>
+    <plugin type="rebel_webots.rebel_webots_driver.RebelWebotsDriver" />
   </webots>
 
   <ros2_control name="WebotsControl" type="system">
