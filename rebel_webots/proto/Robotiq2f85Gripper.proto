@@ -15,7 +15,7 @@ field  SFRotation rotation     0 0 1 0
 field  SFString   name         "ROBOTIQ 2F-85 Gripper"
 ]
 {
-  Solid {
+  DEF gripper Solid {
     translation IS translation
     rotation IS rotation
     children [

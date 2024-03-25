@@ -252,6 +252,7 @@
     </plugin>
     <plugin type="rebel_webots.object_position_publisher.ObjectPositionPublisher" />
     <plugin type="rebel_webots.gripper_driver.GripperDriver" />
+    <plugin type="rebel_webots.rebel_controller.RebelController" />
   </webots>
 
   <ros2_control name="WebotsControl" type="system">
