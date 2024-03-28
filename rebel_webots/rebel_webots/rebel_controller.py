@@ -82,6 +82,7 @@ class RebelController():
         rclpy.spin_once(self.__node, timeout_sec=0)
         rclpy.spin_once(self.__node, timeout_sec=0)
         rclpy.spin_once(self.__node, timeout_sec=0)
+        rclpy.spin_once(self.__node, timeout_sec=0)
         ## Hier muss der Reinforcement Learner einen sinnvollen Input geben!!
         self.__compute_distance()
         self.__publish_distance()
