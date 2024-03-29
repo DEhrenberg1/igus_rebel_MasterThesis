@@ -14,6 +14,7 @@
 
 import rclpy
 from geometry_msgs.msg import Point
+import math
 
 class ObjectPositionPublisher():
     def init(self, webots_node, properties):
@@ -21,8 +22,12 @@ class ObjectPositionPublisher():
         self.__block1 = self.__robot.getFromDef('block1_solid')
         self.__block2 = self.__robot.getFromDef('block2_solid')
         self.__gripper = self.__robot.getFromDef('gripper')
+        self.__distance_gripper_b1 = 0.0
+        self.__distance_gripper_b2 = 0.0
+        self.__distance_b1_b2 = 0.0
         rclpy.init(args=None)
         self.__node = rclpy.create_node('igus_webots_driver')
+        self.__pub = self.__node.create_publisher(Point, '/distance', 10)
         self.__pub1 = self.__node.create_publisher(Point, 'position/block1', 10)
         self.__pub2 = self.__node.create_publisher(Point, 'position/block2', 10)
         self.__pub3 = self.__node.create_publisher(Point, 'position/gripper', 10)
@@ -34,12 +39,26 @@ class ObjectPositionPublisher():
         msg.y = position[1]
         msg.z = position[2]
         publisher.publish(msg)
+    
+    def __compute_distance(self):
+        self.__distance_gripper_b1 = math.sqrt((self.__block1.getPosition()[0] - self.__gripper.getPosition()[0])**2 + (self.__block1.getPosition()[1] - self.__gripper.getPosition()[1])**2 + (self.__block1.getPosition()[2] - self.__gripper.getPosition()[2])**2)
+        self.__distance_gripper_b2 = math.sqrt((self.__block2.getPosition()[0] - self.__gripper.getPosition()[0])**2 + (self.__block2.getPosition()[1] - self.__gripper.getPosition()[1])**2 + (self.__block2.getPosition()[2] - self.__gripper.getPosition()[2])**2)
+        self.__distance_b1_b2 = math.sqrt((self.__block1.getPosition()[0] - self.__block2.getPosition()[0])**2 + (self.__block1.getPosition()[1] - self.__block2.getPosition()[1])**2 + (self.__block1.getPosition()[2] - self.__block2.getPosition()[2])**2)
+
+    def __publish_distance(self):
+        msg = Point()
+        msg.x = self.__distance_b1_b2
+        msg.y = self.__distance_gripper_b1
+        msg.z = self.__distance_gripper_b2
+        self.__pub.publish(msg)
 
     def step(self):
         rclpy.spin_once(self.__node, timeout_sec=0)
         self.publish_position(self.__block1, self.__pub1)
         self.publish_position(self.__block2, self.__pub2)
         self.publish_position(self.__gripper, self.__pub3)
+        self.__compute_distance()
+        self.__publish_distance()
 
 def main(args=None):
     rclpy.init(args=args)
