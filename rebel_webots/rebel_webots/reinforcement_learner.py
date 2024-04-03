@@ -1,9 +1,9 @@
 import gymnasium as gym
 import numpy as np
 import rclpy
-import os
 from gymnasium import spaces
-import time
+from stable_baselines3 import DDPG
+from stable_baselines3.common.noise import NormalActionNoise, OrnsteinUhlenbeckActionNoise
 #from controller import Supervisor
 
 ##Ros2 Message Types
@@ -18,9 +18,13 @@ from trajectory_msgs.msg import JointTrajectoryPoint
 class ReinforcementLearnerEnvironment(gym.Env):
     def __init__(self):
         super().__init__
+        ## Constants
+        self.__neg_inf = np.finfo(np.float64).min #negative infinity
+        self.__pos_inf = np.finfo(np.float64).max #positive infinity
+        self.__max_steps = 200
         ## Observation variables
-        self.__arm_positions = 0.0
-        self.__arm_velocities = 0.0
+        self.__arm_positions = [0.0,0.0,0.0,0.0,0.0,0.0]
+        self.__arm_velocities = [0.0,0.0,0.0,0.0,0.0,0.0]
         self.__block1_x = 0.0
         self.__block1_y = 0.0
         self.__block1_z = 0.0
@@ -30,25 +34,21 @@ class ReinforcementLearnerEnvironment(gym.Env):
         self.__gripper_x = 0.0
         self.__gripper_y = 0.0
         self.__gripper_z = 0.0
-        self.__distance_gripper_b1 = 0.0
-        self.__distance_gripper_b2 = 0.0
-        self.__distance_b1_b2 = 0.0
+        self.__distance_gripper_b1 = self.__pos_inf
+        self.__distance_gripper_b2 = self.__pos_inf
+        self.__distance_b1_b2 = self.__pos_inf
         self.__pos_b1_set = False
         self.__pos_b2_set = False
         self.__joint_state_set = False
         self.__pos_gripper_set = False
         self.__distance_set = False
-        ## Constants
-        neg_inf = np.finfo(np.float32).min #negative infinity
-        pos_inf = np.finfo(np.float32).max #positive infinity
-        self.__max_steps = 200
         ## OpenAI Stuff
         self.action_space = spaces.Box(low = -1.0, high = 1.0, shape = (), dtype=np.float64) #Velocity controller of first joint
         self.observation_space = spaces.Dict(
             {
-                "rebel_arm_position": spaces.Box(neg_inf, pos_inf, shape= (6,), dtype=np.float64),
+                "rebel_arm_position": spaces.Box(self.__neg_inf, self.__pos_inf, shape= (6,), dtype=np.float64),
                 "rebel_arm_velocity": spaces.Box(-1.1, 1.1, shape= (6,), dtype=np.float64),
-                "distance_to_block" : spaces.Box(0, pos_inf, shape = (), dtype=np.float64)
+                "distance_to_block" : spaces.Box(0, self.__pos_inf, shape = (), dtype=np.float64)
             }
         )
         self.__current_steps = 0
@@ -87,9 +87,29 @@ class ReinforcementLearnerEnvironment(gym.Env):
         return observation, reward, terminated, truncated, info
     
     def reset (self, seed=None, options=None):
+        print("simulation will be reset")
+        msg = Bool()
+        msg.data = True
+        self.reset_publisher.publish(msg)
+
+        self.__arm_positions = [0.0,0.0,0.0,0.0,0.0,0.0]
+        self.__arm_velocities = [0.0,0.0,0.0,0.0,0.0,0.0]
+        self.__block1_x = 0.0
+        self.__block1_y = 0.0
+        self.__block1_z = 0.0
+        self.__block2_x = 0.0
+        self.__block2_y = 0.0
+        self.__block2_z = 0.0
+        self.__gripper_x = 0.0
+        self.__gripper_y = 0.0
+        self.__gripper_z = 0.0
+        self.__distance_gripper_b1 = self.__pos_inf
+        self.__distance_gripper_b2 = self.__pos_inf
+        self.__distance_b1_b2 = self.__pos_inf
         self.__current_steps = 0
-        observation = None
-        info = None
+
+        observation = {"rebel_arm_position": self.__arm_positions, "rebel_arm_velocity": self.__arm_velocities, "distance_to_block": self.__distance_gripper_b1}
+        info = {}
         return observation, info
     
     #Not sure if these functions are needed.
@@ -146,17 +166,13 @@ class ReinforcementLearnerEnvironment(gym.Env):
 
 def main(args = None):
     rclpy.init(args=args)
-    rle = ReinforcementLearnerEnvironment()
-    rle.move_arm([1.0, 0.0, 0.0, 0.0, 0.0, 0.0])
-    time.sleep(1.0)
-    msg = Bool()
-    msg.data = True
-    rle.reset_publisher.publish(msg)
-    rclpy.shutdown()
-    #while(True):
-    #    rle.step(1.0)
-    #    rle.move_gripper(0.5)
-        
+    env = ReinforcementLearnerEnvironment()
+    # The noise object for DDPG
+    action_noise = NormalActionNoise(mean=np.zeros(1,), sigma=0.1 * np.ones(1,))
+    
+    model = DDPG("MultiInputPolicy", env, action_noise=action_noise, verbose=1)
+    model.learn(total_timesteps= 10000, log_interval=10)
+    model.save("ddpg_igus_rebel_test")
 
 if __name__ == '__main__':
     main()
