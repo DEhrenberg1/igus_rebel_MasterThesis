@@ -14,10 +14,12 @@
 
 import rclpy
 from geometry_msgs.msg import Point
+from std_msgs.msg import Bool
 import math
 
 class ObjectPositionPublisher():
     def init(self, webots_node, properties):
+        self.__webots_node = webots_node
         self.__robot = webots_node.robot
         self.__block1 = self.__robot.getFromDef('block1_solid')
         self.__block2 = self.__robot.getFromDef('block2_solid')
@@ -28,9 +30,10 @@ class ObjectPositionPublisher():
         rclpy.init(args=None)
         self.__node = rclpy.create_node('igus_webots_driver')
         self.__pub = self.__node.create_publisher(Point, '/distance', 10)
-        self.__pub1 = self.__node.create_publisher(Point, 'position/block1', 10)
-        self.__pub2 = self.__node.create_publisher(Point, 'position/block2', 10)
-        self.__pub3 = self.__node.create_publisher(Point, 'position/gripper', 10)
+        self.__pub1 = self.__node.create_publisher(Point, '/position/block1', 10)
+        self.__pub2 = self.__node.create_publisher(Point, '/position/block2', 10)
+        self.__pub3 = self.__node.create_publisher(Point, '/position/gripper', 10)
+        self.__node.create_subscription(Bool, '/reset', self.__reset_callback, 10)
 
     def publish_position(self, object, publisher):
         position = object.getPosition()
@@ -51,6 +54,12 @@ class ObjectPositionPublisher():
         msg.y = self.__distance_gripper_b1
         msg.z = self.__distance_gripper_b2
         self.__pub.publish(msg)
+    
+    def __reset_callback(self, msg):
+        if msg.data:
+            self.__robot.getSelf().restartController()
+            self.__robot.simulationResetPhysics()
+            self.__robot.simulationReset()
 
     def step(self):
         rclpy.spin_once(self.__node, timeout_sec=0)

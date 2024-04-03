@@ -25,6 +25,35 @@ from webots_ros2_driver.webots_controller import WebotsController
 from webots_ros2_driver.utils import controller_url_prefix
 from webots_ros2_driver.wait_for_controller_connection import WaitForControllerConnection
 
+def get_ros2_control_spawners(*args):
+    package_dir = get_package_share_directory('rebel_webots')
+    rebel_xacro_file = os.path.join(package_dir, 'urdf', 'rebel.urdf.xacro')
+    urdf_output_path = os.path.join(package_dir, 'urdf', 'rebel.urdf')
+
+    # Generate the URDF file from the xacro file
+    os.system(f"xacro {rebel_xacro_file} -o {urdf_output_path}")
+    robot_description = urdf_output_path
+    rebel_ros2_control_params=os.path.join(package_dir, 'config', 'rebel_ros2_control_params.yaml')
+
+    controller_manager_timeout = ['--controller-manager-timeout', '100']
+
+    trajectory_controller_spawner = Node(
+        package='controller_manager',
+        executable='spawner',
+        output='screen',
+        arguments=["rebel_arm_controller"] + controller_manager_timeout,
+        parameters=[
+            robot_description,
+            rebel_ros2_control_params,
+        ],
+    )
+    joint_state_broadcaster_spawner = Node(
+        package='controller_manager',
+        executable='spawner',
+        output='screen',
+        arguments=['joint_state_broadcaster'] + controller_manager_timeout,
+    )
+    return [trajectory_controller_spawner, joint_state_broadcaster_spawner]
 
 def generate_launch_description():
     package_dir = get_package_share_directory('rebel_webots')
@@ -68,7 +97,8 @@ def generate_launch_description():
             {'robot_description': robot_description},
             {"set_robot_state_publisher": False},
             rebel_ros2_control_params,
-        ]
+        ],
+        respawn=True
     )
     ros_control_spawners = [trajectory_controller_spawner, joint_state_broadcaster_spawner]
     robot_state_publisher = Node(
@@ -96,11 +126,17 @@ def generate_launch_description():
         webots._supervisor,
         rebel_webots_driver,
         #robot_state_publisher,
-        waiting_nodes,
+        #waiting_nodes,
         launch.actions.RegisterEventHandler(
             event_handler=launch.event_handlers.OnProcessExit(
                 target_action=webots,
                 on_exit=[launch.actions.EmitEvent(event=launch.events.Shutdown())],
             )
+        ),
+        launch.actions.RegisterEventHandler(
+            event_handler=launch.event_handlers.OnProcessExit(
+                target_action=rebel_webots_driver,
+                on_exit=get_ros2_control_spawners,
+            )
         )
-    ])
+    ] + get_ros2_control_spawners())

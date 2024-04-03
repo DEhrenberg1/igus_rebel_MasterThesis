@@ -14,8 +14,8 @@ WorldInfo {
   ]
 }
 Viewpoint {
-  orientation -0.17944652569598293 0.06902414029405438 0.9813432694385323 2.344280879141333
-  position 1.379755849422517 -1.262945050468729 0.7757643263234983
+  orientation -0.15159851682868697 0.10361616225502208 0.9829962261447818 1.8675691913881054
+  position 0.7432686469067321 -1.8795124421029805 0.6694208404574777
   follow "igus_rebel"
 }
 TexturedBackground {
@@ -68,7 +68,8 @@ IgusRebel {
   controller "<extern>"
   supervisor TRUE
   toolSlot [
-    Robotiq2f85Gripper {
+    DEF gripper Robotiq2f85Gripper {
     }
   ]
 }
+
