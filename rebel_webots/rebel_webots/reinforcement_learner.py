@@ -5,6 +5,7 @@ from gymnasium import spaces
 from stable_baselines3 import DDPG
 from stable_baselines3.common.noise import NormalActionNoise, OrnsteinUhlenbeckActionNoise
 #from controller import Supervisor
+from stable_baselines3.common.logger import configure
 
 ##Ros2 Message Types
 from sensor_msgs.msg import JointState
@@ -21,7 +22,7 @@ class ReinforcementLearnerEnvironment(gym.Env):
         ## Constants
         self.__neg_inf = np.finfo(np.float64).min #negative infinity
         self.__pos_inf = np.finfo(np.float64).max #positive infinity
-        self.__max_steps = 200
+        self.__max_steps = 300
         ## Observation variables
         self.__arm_positions = [0.0,0.0,0.0,0.0,0.0,0.0]
         self.__arm_velocities = [0.0,0.0,0.0,0.0,0.0,0.0]
@@ -34,7 +35,7 @@ class ReinforcementLearnerEnvironment(gym.Env):
         self.__gripper_x = 0.0
         self.__gripper_y = 0.0
         self.__gripper_z = 0.0
-        self.__distance_gripper_b1 = self.__pos_inf
+        self.__distance_gripper_b1 = 2.0
         self.__distance_gripper_b2 = self.__pos_inf
         self.__distance_b1_b2 = self.__pos_inf
         self.__pos_b1_set = False
@@ -43,12 +44,12 @@ class ReinforcementLearnerEnvironment(gym.Env):
         self.__pos_gripper_set = False
         self.__distance_set = False
         ## OpenAI Stuff
-        self.action_space = spaces.Box(low = -1.0, high = 1.0, shape = (), dtype=np.float64) #Velocity controller of first joint
+        self.action_space = spaces.Box(low = -1.0, high = 1.0, shape = (1,), dtype=np.float64) #Velocity controller of first joint
         self.observation_space = spaces.Dict(
             {
                 "rebel_arm_position": spaces.Box(self.__neg_inf, self.__pos_inf, shape= (6,), dtype=np.float64),
                 "rebel_arm_velocity": spaces.Box(-1.1, 1.1, shape= (6,), dtype=np.float64),
-                "distance_to_block" : spaces.Box(0, self.__pos_inf, shape = (), dtype=np.float64)
+                "distance_to_block" : spaces.Box(0, self.__pos_inf, shape = (1,), dtype=np.float64)
             }
         )
         self.__current_steps = 0
@@ -65,7 +66,8 @@ class ReinforcementLearnerEnvironment(gym.Env):
 
     ## Rewriting step and reset function of OpenAIGym for our Use Case:
     def step(self, action):
-        self.move_arm([action, 0.0, 0.0, 0.0, 0.0, 0.0])
+        print(action)
+        self.move_arm([action[0], 0.0, 0.0, 0.0, 0.0, 0.0])
         self.__current_steps += 1
         ##Condition for when the action is completed
         action_executed = False
@@ -79,14 +81,16 @@ class ReinforcementLearnerEnvironment(gym.Env):
             action_executed = self.__pos_b1_set and self.__pos_b2_set and self.__joint_state_set and self.__pos_gripper_set and self.__distance_set
 
         observation = {"rebel_arm_position": self.__arm_positions, "rebel_arm_velocity": self.__arm_velocities, "distance_to_block": self.__distance_gripper_b1}
+        #observation = {"distance_to_block": self.__distance_gripper_b1}
 
-        reward = 1 if (self.__distance_gripper_b1 < 0.7) else 0
+        reward = -self.__distance_gripper_b1
         terminated = False
-        truncated = True if (self.__current_steps == self.__max_steps) else False
+        truncated = True if (self.__current_steps >= self.__max_steps) else False
         info = {}
         return observation, reward, terminated, truncated, info
     
     def reset (self, seed=None, options=None):
+        super().reset(seed=seed)
         print("simulation will be reset")
         msg = Bool()
         msg.data = True
@@ -103,12 +107,13 @@ class ReinforcementLearnerEnvironment(gym.Env):
         self.__gripper_x = 0.0
         self.__gripper_y = 0.0
         self.__gripper_z = 0.0
-        self.__distance_gripper_b1 = self.__pos_inf
+        self.__distance_gripper_b1 = 2.0
         self.__distance_gripper_b2 = self.__pos_inf
         self.__distance_b1_b2 = self.__pos_inf
         self.__current_steps = 0
 
         observation = {"rebel_arm_position": self.__arm_positions, "rebel_arm_velocity": self.__arm_velocities, "distance_to_block": self.__distance_gripper_b1}
+        #observation = {"distance_to_block": self.__distance_gripper_b1}
         info = {}
         return observation, info
     
@@ -170,9 +175,15 @@ def main(args = None):
     # The noise object for DDPG
     action_noise = NormalActionNoise(mean=np.zeros(1,), sigma=0.1 * np.ones(1,))
     
-    model = DDPG("MultiInputPolicy", env, action_noise=action_noise, verbose=1)
-    model.learn(total_timesteps= 10000, log_interval=10)
-    model.save("ddpg_igus_rebel_test")
+    model = DDPG("MultiInputPolicy", env, action_noise=action_noise, verbose=1, learning_rate = 0.001, tau = 0.001, gradient_steps=-1, learning_starts=900, gamma = 1)
+    #model = DDPG.load("ddpg_igus_rebel_test")
+    #model.set_env(env)
+    tmp_path = "/tmp/sb3_log/"
+    # set up logger
+    new_logger = configure(tmp_path, ["stdout", "csv", "tensorboard"])  
+    model.set_logger(new_logger)
+    model.learn(total_timesteps = 10000, log_interval=1)
+    model.save("ddpg_igus_rebel_test2")
 
 if __name__ == '__main__':
     main()
