@@ -34,7 +34,7 @@ DEF block1_solid Solid {
         roughness 1
       }
       geometry Box {
-        size 0.05 0.05 0.05
+        size 0.055 0.055 0.055
       }
     }
   ]
@@ -54,7 +54,7 @@ DEF block2_solid Solid {
         baseColor 1 0 0
       }
       geometry Box {
-        size 0.05 0.05 0.05
+        size 0.055 0.055 0.055
       }
     }
   ]
