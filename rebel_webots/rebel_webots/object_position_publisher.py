@@ -13,8 +13,10 @@
 #  limitations under the License.
 
 import rclpy
+import numpy as np
 from geometry_msgs.msg import Point
 from std_msgs.msg import Bool
+from std_msgs.msg import Float64
 import math
 
 class ObjectPositionPublisher():
@@ -27,16 +29,17 @@ class ObjectPositionPublisher():
         self.__distance_gripper_b1 = 0.0
         self.__distance_gripper_b2 = 0.0
         self.__distance_b1_b2 = 0.0
+        self.__pinch_pos = [0.0, 0.0, 0.0]
         rclpy.init(args=None)
         self.__node = rclpy.create_node('igus_webots_driver')
         self.__pub = self.__node.create_publisher(Point, '/distance', 10)
         self.__pub1 = self.__node.create_publisher(Point, '/position/block1', 10)
         self.__pub2 = self.__node.create_publisher(Point, '/position/block2', 10)
         self.__pub3 = self.__node.create_publisher(Point, '/position/gripper', 10)
+        self.__pub4 = self.__node.create_publisher(Float64, '/sim_time', 10)
         self.__node.create_subscription(Bool, '/reset', self.__reset_callback, 10)
 
-    def publish_position(self, object, publisher):
-        position = object.getPosition()
+    def publish_position(self, position, publisher):
         msg = Point()
         msg.x = position[0]
         msg.y = position[1]
@@ -55,19 +58,36 @@ class ObjectPositionPublisher():
         msg.z = self.__distance_gripper_b2
         self.__pub.publish(msg)
     
+    def __publish_simulation_time(self):
+        sim_time_message = Float64()
+        sim_time_message.data = self.__robot.getTime()
+        self.__pub4.publish(sim_time_message)
+    
     def __reset_callback(self, msg):
         if msg.data:
             self.__robot.getSelf().restartController()
             self.__robot.simulationResetPhysics()
             self.__robot.simulationReset()
+    
+    def __compute_gripper_pinch_pos(self):
+        ##This function computes roughly the pinch position of the fingers (i.e. the position the fingers would meet when closing)
+        ##This is based on the position and orientation of the gripper (see webots documentation) and gripper specification
+        pos = self.__gripper.getPosition()
+        orientation = self.__gripper.getOrientation()
+        orientation = np.reshape(orientation, (3,3))
+        offset = np.array([0,0,0.15]) #pinch position is roughly 15cm from gripper pos in z-direction in gripper coordinate system
+        self.__pinch_pos = np.matmul(orientation,offset) + pos
 
     def step(self):
         rclpy.spin_once(self.__node, timeout_sec=0)
-        self.publish_position(self.__block1, self.__pub1)
-        self.publish_position(self.__block2, self.__pub2)
-        self.publish_position(self.__gripper, self.__pub3)
+        self.publish_position(self.__block1.getPosition(), self.__pub1)
+        self.publish_position(self.__block2.getPosition(), self.__pub2)
+        self.__compute_gripper_pinch_pos()
+        self.publish_position(self.__pinch_pos, self.__pub3)
+        #self.publish_position(self.__gripper.getPosition(), self.__pub3)
         self.__compute_distance()
         self.__publish_distance()
+        self.__publish_simulation_time()
 
 def main(args=None):
     rclpy.init(args=args)
