@@ -21,17 +21,17 @@ rebel_arm_controller:
       - joint6
     gains:
       joint1:
-        ff_velocity_scale: 1.0
+        ff_velocity_scale: 0.0
       joint2:
-        ff_velocity_scale: 1.0
+        ff_velocity_scale: 0.0
       joint3:
-        ff_velocity_scale: 1.0
+        ff_velocity_scale: 0.0
       joint4:
-        ff_velocity_scale: 1.0
+        ff_velocity_scale: 0.0
       joint5:
-        ff_velocity_scale: 1.0
+        ff_velocity_scale: 0.0
       joint6:
-        ff_velocity_scale: 1.0
+        ff_velocity_scale: 0.0
     command_interfaces:
       - velocity
     state_interfaces:

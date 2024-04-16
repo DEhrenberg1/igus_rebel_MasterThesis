@@ -3,6 +3,7 @@ import numpy as np
 import rclpy
 from gymnasium import spaces
 from stable_baselines3 import DDPG
+from stable_baselines3 import PPO
 from stable_baselines3.common.noise import NormalActionNoise, OrnsteinUhlenbeckActionNoise
 #from controller import Supervisor
 from stable_baselines3.common.logger import configure
@@ -49,7 +50,7 @@ class ReinforcementLearnerEnvironment(gym.Env):
         self.__sim_time_set = False
         self.__start_time = 0.0
         ## OpenAI Stuff
-        self.action_space = spaces.Box(low = -0.1, high = 0.4, shape = (6,), dtype=np.float64) #Velocity controller of all six joints
+        self.action_space = spaces.Box(low = -0.4, high = 0.4, shape = (6,), dtype=np.float64) #Velocity controller of all six joints
         self.observation_space = spaces.Dict(
             {
                 "rebel_arm_position": spaces.Box(self.__neg_inf, self.__pos_inf, shape= (6,), dtype=np.float64),
@@ -68,7 +69,8 @@ class ReinforcementLearnerEnvironment(gym.Env):
         self.__node.create_subscription(Point, '/position/gripper', self.__pos_gripper_callback, 1)
         self.__node.create_subscription(Point, '/distance', self.__distance_callback, 1)
         self.__node.create_subscription(Float64, '/sim_time', self.__sim_time_callback, 1)
-        self.__arm_publisher = self.__node.create_publisher(Float64MultiArray, '/rebel_arm_controller/commands', 10)
+        #self.__arm_publisher = self.__node.create_publisher(Float64MultiArray, '/rebel_arm_controller/commands', 10)
+        self.__arm_publisher = self.__node.create_publisher(Float64MultiArray, '/joint_trajectory/command', 10)
         self.__gripper_publisher = self.__node.create_publisher(JointTrajectory, '/gripper_driver/command', 10)
         self.reset_publisher = self.__node.create_publisher(Bool, '/reset', 10)
 
@@ -96,10 +98,12 @@ class ReinforcementLearnerEnvironment(gym.Env):
         pos_block1 = [self.__block1_x, self.__block1_y, self.__block1_z]
         pos_gripper = [self.__gripper_x, self.__gripper_y, self.__gripper_z]
 
-        observation = {"position_block_1": pos_block1, "position_gripper": pos_gripper, "rebel_arm_position": self.__arm_positions, "rebel_arm_velocity": self.__arm_velocities, "distance_to_block": self.__distance_gripper_b1}
+        observation = {"position_block_1": pos_block1, "position_gripper": pos_gripper, "rebel_arm_position": self.__arm_positions, "rebel_arm_velocity": self.__arm_velocities, "distance_to_block": [self.__distance_gripper_b1]}
         #observation = {"distance_to_block": self.__distance_gripper_b1}
 
-        reward = 1 if self.reached_grasp_pose(0.02,0.02,0.02) else 0 #Hat mir 0.03 auf allen schon fkt. das es reward gab
+        reward = 0.1 if self.reached_grasp_pose(0.1,0.1,0.1) else 0 #Hat mit 0.03 auf allen schon fkt. das es reward gab
+        reward = (reward + 1) if self.reached_grasp_pose(0.03,0.03,0.03) else reward
+        reward = (reward + 10) if self.reached_grasp_pose(0.02,0.02,0.02) else reward 
         reward = reward + 0.0001*(10-self.__distance_gripper_b1)
         #if self.__gripper_z <= 0.02:
         #    reward = reward - 1
@@ -138,7 +142,7 @@ class ReinforcementLearnerEnvironment(gym.Env):
 
         pos_block1 = [self.__block1_x, self.__block1_y, self.__block1_z]
         pos_gripper = [self.__gripper_x, self.__gripper_y, self.__gripper_z]
-        observation = {"position_block_1": pos_block1, "position_gripper": pos_gripper, "rebel_arm_position": self.__arm_positions, "rebel_arm_velocity": self.__arm_velocities, "distance_to_block": self.__distance_gripper_b1}
+        observation = {"position_block_1": pos_block1, "position_gripper": pos_gripper, "rebel_arm_position": self.__arm_positions, "rebel_arm_velocity": self.__arm_velocities, "distance_to_block": [self.__distance_gripper_b1]}
         info = {}
         return observation, info
     
@@ -210,18 +214,21 @@ def main(args = None):
     rclpy.init(args=args)
     env = ReinforcementLearnerEnvironment()
     # The noise object for DDPG
-    action_noise = NormalActionNoise(mean=np.zeros(6,), sigma=0.1 * np.ones(6,))
+    # action_noise = NormalActionNoise(mean=np.zeros(6,), sigma=0.2 * np.ones(6,))
+    action_noise = OrnsteinUhlenbeckActionNoise(mean=np.zeros(6,), sigma=0.2 * np.ones(6,), theta = 0.01)
+
     
-    model = DDPG("MultiInputPolicy", env, action_noise=action_noise, verbose=1, learning_rate = 0.001, tau = 0.001, learning_starts=150, gamma = 0.99, batch_size=15, buffer_size= 10000, gradient_steps= 10, train_freq = (1, "episode"))
+    model = DDPG("MultiInputPolicy", env, action_noise=action_noise, verbose=1, learning_rate = 0.001, tau = 0.001, learning_starts=2000, gamma = 0.99, batch_size=3, buffer_size= 70000, gradient_steps= 10, train_freq = (1, "episode"))
     #model = DDPG.load("ddpg_igus_rebel_test3")
-    model.set_env(env)
+    #model.set_env(env)
+    #model = PPO("MultiInputPolicy", env=env, batch_size=3,n_epochs=2,n_steps=450)
     tmp_path = "/tmp/sb3_log/"
     # set up logger
     new_logger = configure(tmp_path, ["stdout", "csv", "tensorboard"])  
     model.set_logger(new_logger)
-    model.learn(total_timesteps = 30000, log_interval=1)
+    model.learn(total_timesteps = 100000, log_interval=1)
     #test 6 war 0.03 bei allen
-    model.save("box_swap_test_0.03_grasping_box_0.05_action_noise")
+    model.save("PPO_test_")
 
 if __name__ == '__main__':
     main()
