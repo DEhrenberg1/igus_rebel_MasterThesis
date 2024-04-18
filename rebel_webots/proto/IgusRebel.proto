@@ -64,6 +64,8 @@ PROTO IgusRebel [
               jointParameters HingeJointParameters {
                 axis 0.000000 -1.000000 0.000000
                 anchor 0.000000 0.025000 0.153000
+                minStop -1.48353
+                maxStop 2.44346
               }
               device [
                 RotationalMotor {
@@ -118,6 +120,8 @@ PROTO IgusRebel [
                             jointParameters HingeJointParameters {
                               axis 0.000000 -1.000000 0.000000
                               anchor 0.000000 0.025000 0.100000
+                              minStop -1.39626
+                              maxStop 2.61799
                             }
                             device [
                               RotationalMotor {
@@ -175,6 +179,8 @@ PROTO IgusRebel [
                                         jointParameters HingeJointParameters {
                                           axis 0.000000 -1.000000 0.000000
                                           anchor 0.000000 0.029000 0.143000
+                                          minStop -1.65806
+                                          maxStop 1.65806
                                         }
                                         device [
                                           RotationalMotor {

@@ -49,11 +49,11 @@ class ReinforcementLearnerEnvironment(gym.Env):
         self.__sim_time_set = False
         self.__start_time = 0.0
         ## OpenAI Stuff
-        self.action_space = spaces.Box(low = -0.1, high = 0.4, shape = (6,), dtype=np.float64) #Velocity controller of all six joints
+        self.action_space = spaces.Box(low = np.array([-1.0,-1.0,-1.0,-1.0]), high = np.array([1.0,1.0,1.0,1.0]), shape = (4,), dtype=np.float64) #Velocity controller of all six joints
         self.observation_space = spaces.Dict(
             {
-                "rebel_arm_position": spaces.Box(self.__neg_inf, self.__pos_inf, shape= (6,), dtype=np.float64),
-                "rebel_arm_velocity": spaces.Box(-1.1, 1.1, shape = (6,), dtype=np.float64),
+                "rebel_arm_position": spaces.Box(self.__neg_inf, self.__pos_inf, shape= (4,), dtype=np.float64),
+                "rebel_arm_velocity": spaces.Box(-1.1, 1.1, shape = (4,), dtype=np.float64),
                 "position_block_1": spaces.Box(-3, 3, shape = (3,), dtype=np.float64),
                 "position_gripper": spaces.Box(-3, 3, shape = (3,), dtype=np.float64),
                 "distance_to_block" : spaces.Box(0, self.__pos_inf, shape = (1,), dtype=np.float64)
@@ -74,32 +74,37 @@ class ReinforcementLearnerEnvironment(gym.Env):
 
     ## Rewriting step and reset function of OpenAIGym for our Use Case:
     def step(self, action):
-        self.move_arm([action[0], action[1], action[2], action[3], action[4], action[5]])
-        self.__current_steps += 1
-        if self.__current_steps == 1:
-            self.__start_time = self.__sim_time
-        ##Condition for when the action is completed
-        action_executed = False
-        self.__pos_b1_set = False
-        self.__pos_b2_set = False
-        #self.__joint_state_set = False
-        self.__pos_gripper_set = False
-        self.__distance_set = False
-        self.__sim_time_set = False
-        #i = datetime.datetime.now()
-        while not action_executed:
-            rclpy.spin_once(self.__node, timeout_sec=0)
-            action_executed = self.__pos_b1_set and self.__pos_b2_set and self.__joint_state_set and self.__pos_gripper_set and self.__distance_set and self.__sim_time_set
-        #q = datetime.datetime.now()
-        #print((q-i).seconds)
-        #print((q-i).microseconds)
+        self.move_arm([action[0], action[1], action[2], 0.0, action[3], 0.0])
+        i = 0 
+        while i < 4:
+            self.__current_steps += 1
+            if self.__current_steps == 1:
+                self.__start_time = self.__sim_time
+            ##Condition for when the action is completed
+            action_executed = False
+            self.__pos_b1_set = False
+            self.__pos_b2_set = False
+            #self.__joint_state_set = False
+            self.__pos_gripper_set = False
+            self.__distance_set = False
+            self.__sim_time_set = False
+            #i = datetime.datetime.now()
+            while not action_executed:
+                rclpy.spin_once(self.__node, timeout_sec=0)
+                action_executed = self.__pos_b1_set and self.__pos_b2_set and self.__joint_state_set and self.__pos_gripper_set and self.__distance_set and self.__sim_time_set
+            #q = datetime.datetime.now()
+            #print((q-i).seconds)
+            #print((q-i).microseconds)
+            i = i + 1
         pos_block1 = [self.__block1_x, self.__block1_y, self.__block1_z]
         pos_gripper = [self.__gripper_x, self.__gripper_y, self.__gripper_z]
+        rel_arm_pos = [self.__arm_positions[0],self.__arm_positions[1],self.__arm_positions[2],self.__arm_positions[4]]
+        rel_arm_vel = [self.__arm_velocities[0], self.__arm_velocities[1], self.__arm_velocities[2], self.__arm_velocities[4]]
 
-        observation = {"position_block_1": pos_block1, "position_gripper": pos_gripper, "rebel_arm_position": self.__arm_positions, "rebel_arm_velocity": self.__arm_velocities, "distance_to_block": self.__distance_gripper_b1}
+        observation = {"position_block_1": pos_block1, "position_gripper": pos_gripper, "rebel_arm_position": rel_arm_pos, "rebel_arm_velocity": rel_arm_vel, "distance_to_block": self.__distance_gripper_b1}
         #observation = {"distance_to_block": self.__distance_gripper_b1}
 
-        reward = 1 if self.reached_grasp_pose(0.02,0.02,0.02) else 0 #Hat mir 0.03 auf allen schon fkt. das es reward gab
+        reward = 1 if self.reached_grasp_pose(0.1,0.1,0.1) else 0 #Hat mir 0.03 auf allen schon fkt. das es reward gab
         reward = reward + 0.0001*(10-self.__distance_gripper_b1)
         #if self.__gripper_z <= 0.02:
         #    reward = reward - 1
@@ -138,7 +143,9 @@ class ReinforcementLearnerEnvironment(gym.Env):
 
         pos_block1 = [self.__block1_x, self.__block1_y, self.__block1_z]
         pos_gripper = [self.__gripper_x, self.__gripper_y, self.__gripper_z]
-        observation = {"position_block_1": pos_block1, "position_gripper": pos_gripper, "rebel_arm_position": self.__arm_positions, "rebel_arm_velocity": self.__arm_velocities, "distance_to_block": self.__distance_gripper_b1}
+        rel_arm_pos = [self.__arm_positions[0],self.__arm_positions[1],self.__arm_positions[2],self.__arm_positions[4]]
+        rel_arm_vel = [self.__arm_velocities[0], self.__arm_velocities[1], self.__arm_velocities[2], self.__arm_velocities[4]]
+        observation = {"position_block_1": pos_block1, "position_gripper": pos_gripper, "rebel_arm_position": rel_arm_pos, "rebel_arm_velocity": rel_arm_vel, "distance_to_block": self.__distance_gripper_b1}
         info = {}
         return observation, info
     
@@ -210,9 +217,9 @@ def main(args = None):
     rclpy.init(args=args)
     env = ReinforcementLearnerEnvironment()
     # The noise object for DDPG
-    action_noise = NormalActionNoise(mean=np.zeros(6,), sigma=0.1 * np.ones(6,))
+    action_noise = NormalActionNoise(mean=np.zeros(4,), sigma=0.1 * np.ones(4,))
     
-    model = DDPG("MultiInputPolicy", env, action_noise=action_noise, verbose=1, learning_rate = 0.001, tau = 0.001, learning_starts=150, gamma = 0.99, batch_size=15, buffer_size= 10000, gradient_steps= 10, train_freq = (1, "episode"))
+    model = DDPG("MultiInputPolicy", env, action_noise=action_noise, verbose=1, learning_rate = 0.001, tau = 0.001, learning_starts=1000, gamma = 0.99, batch_size=15, buffer_size= 10000, gradient_steps= 10, train_freq = (1, "episode"))
     #model = DDPG.load("ddpg_igus_rebel_test3")
     model.set_env(env)
     tmp_path = "/tmp/sb3_log/"

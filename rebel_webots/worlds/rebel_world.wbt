@@ -9,7 +9,7 @@ IMPORTABLE EXTERNPROTO "../proto/Robotiq2f85Gripper.proto"
 WorldInfo {
   contactProperties [
     ContactProperties {
-      maxContactJoints 1000
+      maxContactJoints 10
     }
   ]
 }
