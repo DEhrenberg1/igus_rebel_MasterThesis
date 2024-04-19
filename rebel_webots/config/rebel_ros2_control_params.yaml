@@ -4,7 +4,7 @@ controller_manager:
     update_rate: 31  # Hz
 
     rebel_arm_controller:
-      type: velocity_controllers/JointGroupVelocityController
+      type: joint_trajectory_controller/JointTrajectoryController
 
 
     joint_state_broadcaster:
