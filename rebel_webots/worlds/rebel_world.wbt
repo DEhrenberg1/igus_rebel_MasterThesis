@@ -9,13 +9,12 @@ IMPORTABLE EXTERNPROTO "../proto/Robotiq2f85Gripper.proto"
 WorldInfo {
   contactProperties [
     ContactProperties {
-      maxContactJoints 10
     }
   ]
 }
 Viewpoint {
-  orientation -0.15159851682868697 0.10361616225502208 0.9829962261447818 1.8675691913881054
-  position 0.7432686469067321 -1.8795124421029805 0.6694208404574777
+  orientation -0.24965554395563858 -0.11220731742754152 0.9618116381537131 3.9048217438519393
+  position 1.4394855383292273 1.4032042616903329 1.2702603507341426
   follow "igus_rebel"
 }
 TexturedBackground {
@@ -26,7 +25,7 @@ CircleArena {
 }
 DEF block1_solid Solid {
   translation 0.4 0.4 0.0275
-  rotation 0 0 -1 -3.1415853071795863
+  rotation 0 0 1 -2.3562053071795863
   children [
     DEF block1 Shape {
       appearance PBRAppearance {
@@ -72,4 +71,3 @@ IgusRebel {
     }
   ]
 }
-

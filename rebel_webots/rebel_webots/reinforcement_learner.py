@@ -83,7 +83,12 @@ class ReinforcementLearnerEnvironment(gym.Env):
         print(action)
         #This commented out action moves arm in gripping pos for block 1
         #self.move_arm([-0.8, 0.4, 0.7, 0.0, 0.5, 0.0])
+        if self.__current_steps == 2:
+            self.move_gripper(0.7)
+            time.sleep(0.1)
+
         self.move_arm([action[0], action[1], action[2], 0.0, action[3], 0.0])
+        
         time.sleep(1.1)
         self.__current_steps += 1
         
@@ -122,6 +127,7 @@ class ReinforcementLearnerEnvironment(gym.Env):
         reward = 0.1 if self.reached_grasp_pose(0.2,0.2,0.2) else 0 #Hat mit 0.03 auf allen schon fkt. das es reward gab
         reward = 1 if self.reached_grasp_pose(0.1,0.1,0.1) else reward
         reward = 10 if self.reached_grasp_pose(0.03,0.03,0.03) else reward
+        reward = 100 if self.__block1_z > 0.06 else reward
         #reward = reward + 0.0001*(10-self.__distance_gripper_b1)
         terminated = False
         truncated = True if (self.__current_steps>=self.__max_steps) else False
@@ -250,9 +256,9 @@ def main(args = None):
     Thread(target = updater, args = [env._ReinforcementLearnerEnvironment__node]).start() #Spin Node to update values
     #env.send_goal([0.0,1.0,0.0,0.0,0.0,0.0])
     #The noise object for DDPG
-    action_noise = NormalActionNoise(mean=np.zeros(4,), sigma=0.05 * np.ones(4,))
+    action_noise = NormalActionNoise(mean=np.zeros(4,), sigma=0.1 * np.ones(4,))
     
-    model = DDPG("MultiInputPolicy", env, action_noise=action_noise, verbose=1, learning_rate = 0.001, tau = 0.001, learning_starts=50, gamma = 0.99, batch_size=15, buffer_size= 10000, gradient_steps= 10, train_freq = (1, "episode"))
+    model = DDPG("MultiInputPolicy", env, action_noise=action_noise, verbose=1, learning_rate = 0.001, tau = 0.001, learning_starts=50, gamma = 0.99, batch_size=1000, buffer_size= 10000, gradient_steps= 10, train_freq = (1, "episode"))
     #model = DDPG.load("ddpg_igus_rebel_test3")
     model.set_env(env)
     tmp_path = "/tmp/sb3_log/"
