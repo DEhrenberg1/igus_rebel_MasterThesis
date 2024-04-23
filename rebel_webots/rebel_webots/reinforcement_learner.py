@@ -78,18 +78,20 @@ class ReinforcementLearnerEnvironment(gym.Env):
 
     ## Rewriting step and reset function of OpenAIGym for our Use Case:
     def step(self, action):
-        if self.__current_steps == 0:
-            time.sleep(3)
-        print(action)
         #This commented out action moves arm in gripping pos for block 1
         #self.move_arm([-0.8, 0.4, 0.7, 0.0, 0.5, 0.0])
+        if self.__current_steps == 0:
+            self.move_arm([action[0], 0.0, 0.0, 0.0, 0.0, 0.0])
+            time.sleep(0.1)
+        
         if self.__current_steps == 2:
             self.move_gripper(0.7)
             time.sleep(0.1)
 
-        self.move_arm([action[0], action[1], action[2], 0.0, action[3], 0.0])
+        if self.__current_steps != 0:
+            self.move_arm([action[0], action[1], action[2], 0.0, action[3], 0.0])
         
-        time.sleep(1.1)
+        time.sleep(1.05)
         self.__current_steps += 1
         
         # action_executed = self.__pos_b1_set and self.__pos_b2_set and self.__joint_state_set and self.__pos_gripper_set and self.__distance_set
@@ -114,7 +116,6 @@ class ReinforcementLearnerEnvironment(gym.Env):
         info = {}
 
         #Check if wanted position was reached, if not: assume collision and restart.
-        print(self.__joint_error)
         for pos in self.__joint_error:
             if abs(pos) > 0.05:
                 reward = 0
@@ -123,11 +124,19 @@ class ReinforcementLearnerEnvironment(gym.Env):
                 print("Collision occured!")
                 return observation, reward, terminated, truncated, info
         
+        reward = 0
+        #reward = 0.1 if self.reached_grasp_pose(0.2,0.2,0.2) else reward #Hat mit 0.03 auf allen schon fkt. das es reward gab
+        #reward = 1 if self.reached_grasp_pose(0.1,0.1,0.1) else reward
+        #reward = 1.25 if self.reached_grasp_pose(0.03,0.03,0.03) else reward
+        for i in range(10):
+            i = i/100
+            if self.reached_grasp_pose(0.12-i,0.12-i,0.12-i):
+                print(reward)
+                reward = reward + (i**2)*1000
 
-        reward = 0.1 if self.reached_grasp_pose(0.2,0.2,0.2) else 0 #Hat mit 0.03 auf allen schon fkt. das es reward gab
-        reward = 1 if self.reached_grasp_pose(0.1,0.1,0.1) else reward
-        reward = 10 if self.reached_grasp_pose(0.03,0.03,0.03) else reward
-        reward = 100 if self.__block1_z > 0.06 else reward
+        reward = 300 if self.__block1_z > 0.04 else reward
+        if self.__block1_z > 0.04:
+            print("Hurra!")
         #reward = reward + 0.0001*(10-self.__distance_gripper_b1)
         terminated = False
         truncated = True if (self.__current_steps>=self.__max_steps) else False
@@ -141,6 +150,9 @@ class ReinforcementLearnerEnvironment(gym.Env):
         print("simulation will be reset")
         msg = Bool()
         msg.data = True
+        self.move_arm([0.0,0.0,0.0,0.0,0.0,0.0])
+        self.move_gripper(0.0)
+        time.sleep(1.05)
         self.reset_publisher.publish(msg)
 
         self.__arm_positions = [0.0,0.0,0.0,0.0,0.0,0.0]
@@ -256,7 +268,7 @@ def main(args = None):
     Thread(target = updater, args = [env._ReinforcementLearnerEnvironment__node]).start() #Spin Node to update values
     #env.send_goal([0.0,1.0,0.0,0.0,0.0,0.0])
     #The noise object for DDPG
-    action_noise = NormalActionNoise(mean=np.zeros(4,), sigma=0.1 * np.ones(4,))
+    action_noise = NormalActionNoise(mean=np.zeros(4,), sigma=0.06 * np.ones(4,))
     
     model = DDPG("MultiInputPolicy", env, action_noise=action_noise, verbose=1, learning_rate = 0.001, tau = 0.001, learning_starts=50, gamma = 0.99, batch_size=1000, buffer_size= 10000, gradient_steps= 10, train_freq = (1, "episode"))
     #model = DDPG.load("ddpg_igus_rebel_test3")
@@ -265,9 +277,9 @@ def main(args = None):
     # set up logger
     new_logger = configure(tmp_path, ["stdout", "csv", "tensorboard"])  
     model.set_logger(new_logger)
-    model.learn(total_timesteps = 30000, log_interval=1)
+    model.learn(total_timesteps = 1500, log_interval=1)
     #test 6 war 0.03 bei allen
-    model.save("position_controller")
+    model.save("position_controller_static")
 
 if __name__ == '__main__':
     main()

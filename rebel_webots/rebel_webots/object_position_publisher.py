@@ -65,9 +65,23 @@ class ObjectPositionPublisher():
     
     def __reset_callback(self, msg):
         if msg.data:
-            self.__robot.getSelf().restartController()
-            self.__robot.simulationResetPhysics()
-            self.__robot.simulationReset()
+            translation_b1 = self.__block1.getField('translation')
+            translation_b1.setSFVec3f([0.4, 0.4, 0.0275])
+            rotation_b1 = self.__block1.getField('rotation')
+            rotation_b1.setSFRotation([0, 0, 1, -2.3562053071795863])
+
+            translation_b2 = self.__block2.getField('translation')
+            translation_b2.setSFVec3f([0.4, 0.0, 0.0275])
+            #Variante 0: Danach funktioniert Controller nicht mehr...
+            #igus_rebel = self.__robot.getFromDef('igus_rebel')
+            #hingejoint_one = igus_rebel.getFromProtoDef('hingejoint_one')
+            #hingejoint_one.setJointPosition(0)
+            #Variante 1:
+            #self.__robot.getSelf().restartController()
+            #self.__robot.simulationResetPhysics()
+            #self.__robot.simulationReset()
+            pass
+
     
     def __compute_gripper_pinch_pos(self):
         ##This function computes roughly the pinch position of the fingers (i.e. the position the fingers would meet when closing)

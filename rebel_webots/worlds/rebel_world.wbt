@@ -62,7 +62,7 @@ DEF block2_solid Solid {
   physics Physics {
   }
 }
-IgusRebel {
+DEF igus_rebel IgusRebel {
   name "igus_rebel"
   controller "<extern>"
   supervisor TRUE
