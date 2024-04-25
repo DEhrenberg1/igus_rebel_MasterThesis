@@ -31,7 +31,7 @@ field  SFString   name         "ROBOTIQ 2F-85 Gripper"
           ]
         }
       }
-      HingeJoint {
+      DEF hj0 HingeJoint {
         jointParameters HingeJointParameters {
           axis -1 0 0
           anchor 0 -0.030601 0.054904
@@ -82,7 +82,7 @@ field  SFString   name         "ROBOTIQ 2F-85 Gripper"
                     ]
                   }
                 }
-                HingeJoint {
+                DEF hj1 HingeJoint {
                   jointParameters HingeJointParameters {
                     anchor 0 0.0061 0.0471
                   }
@@ -354,7 +354,7 @@ field  SFString   name         "ROBOTIQ 2F-85 Gripper"
           }
         }
       }
-      HingeJoint {
+      DEF hj2 HingeJoint {
         jointParameters HingeJointParameters {
           axis -1 0 0
           anchor 0 -0.0127 0.06142
@@ -371,7 +371,7 @@ field  SFString   name         "ROBOTIQ 2F-85 Gripper"
                 ]
               }
             }
-            HingeJoint {
+            DEF hj3 HingeJoint {
               jointParameters HingeJointParameters {
                 anchor 0 0.037 0.0435
               }
@@ -483,7 +483,7 @@ field  SFString   name         "ROBOTIQ 2F-85 Gripper"
           }
         }
       }
-      HingeJoint {
+      DEF hj4 HingeJoint {
         jointParameters HingeJointParameters {
           anchor 0 0.030601 0.054904
           minStop -0.01
@@ -514,7 +514,7 @@ field  SFString   name         "ROBOTIQ 2F-85 Gripper"
               translation 0 0.0315 -0.0041
               children [
                 USE OUTER_FINGER
-                HingeJoint {
+                DEF hj5 HingeJoint {
                   jointParameters HingeJointParameters {
                     anchor 0 0.0061 0.0471
                   }
@@ -576,7 +576,7 @@ field  SFString   name         "ROBOTIQ 2F-85 Gripper"
           }
         }
       }
-      HingeJoint {
+      DEF hj6 HingeJoint {
         jointParameters HingeJointParameters {
           anchor 0 0.0127 0.06142
         }
@@ -584,7 +584,7 @@ field  SFString   name         "ROBOTIQ 2F-85 Gripper"
           translation 0 0.0127 0.06142
           children [
             USE INNER_KNUCKLE
-            HingeJoint {
+            DEF hj7 HingeJoint {
               jointParameters HingeJointParameters {
                 anchor 0 0.037 0.0435
               }

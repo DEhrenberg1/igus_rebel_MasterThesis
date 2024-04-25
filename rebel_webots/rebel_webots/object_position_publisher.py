@@ -65,13 +65,25 @@ class ObjectPositionPublisher():
     
     def __reset_callback(self, msg):
         if msg.data:
+            x_1 = np.random.uniform(0.4, 0.6)
+            y_1 = np.random.uniform(-0.25, 0.25)
+
             translation_b1 = self.__block1.getField('translation')
-            translation_b1.setSFVec3f([0.4, 0.4, 0.0275])
+            translation_b1.setSFVec3f([x_1, y_1, 0.0275])
+            # Always rotate in direction of (0,0,0) for better grasping chances:
+            angle = np.arctan((y_1/x_1))
             rotation_b1 = self.__block1.getField('rotation')
-            rotation_b1.setSFRotation([0, 0, 1, -2.3562053071795863])
+            rotation_b1.setSFRotation([0, 0, 1, angle])
 
             translation_b2 = self.__block2.getField('translation')
-            translation_b2.setSFVec3f([0.4, 0.0, 0.0275])
+            translation_b2.setSFVec3f([0.8, 0.0, 0.0275])
+            rotation_b2 = self.__block2.getField('rotation')
+            rotation_b2.setSFRotation([0, 0, 1, 0])
+
+            gripper = self.__robot.getFromDef('gripper')
+            for i in range(8):
+                hj = gripper.getFromProtoDef('hj' + str(i))
+                hj.setJointPosition(0)
             #Variante 0: Danach funktioniert Controller nicht mehr...
             #igus_rebel = self.__robot.getFromDef('igus_rebel')
             #hingejoint_one = igus_rebel.getFromProtoDef('hingejoint_one')

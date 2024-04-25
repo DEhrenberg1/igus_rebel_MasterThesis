@@ -30,7 +30,7 @@ class ReinforcementLearnerEnvironment(gym.Env):
         ## Constants
         self.__neg_inf = np.finfo(np.float64).min #negative infinity
         self.__pos_inf = np.finfo(np.float64).max #positive infinity
-        self.__max_steps = 5
+        self.__max_steps = 3
         ## Observation variables
         self.__arm_positions = [0.0,0.0,0.0,0.0,0.0,0.0]
         self.__arm_velocities = [0.0,0.0,0.0,0.0,0.0,0.0]
@@ -86,7 +86,7 @@ class ReinforcementLearnerEnvironment(gym.Env):
         
         if self.__current_steps == 2:
             self.move_gripper(0.7)
-            time.sleep(0.1)
+            time.sleep(0.6)
 
         if self.__current_steps != 0:
             self.move_arm([action[0], action[1], action[2], 0.0, action[3], 0.0])
@@ -127,15 +127,17 @@ class ReinforcementLearnerEnvironment(gym.Env):
         reward = 0
         #reward = 0.1 if self.reached_grasp_pose(0.2,0.2,0.2) else reward #Hat mit 0.03 auf allen schon fkt. das es reward gab
         #reward = 1 if self.reached_grasp_pose(0.1,0.1,0.1) else reward
-        #reward = 1.25 if self.reached_grasp_pose(0.03,0.03,0.03) else reward
-        for i in range(10):
-            i = i/100
-            if self.reached_grasp_pose(0.12-i,0.12-i,0.12-i):
-                print(reward)
-                reward = reward + (i**2)*1000
+        if self.reached_grasp_pose(0.04,0.04,0.05) and self.__current_steps==2:
+            reward = 10
+            print("10")
+        # for i in range(10):
+        #     i = i/100
+        #     if self.reached_grasp_pose(0.12-i,0.12-i,0.12-i):
+        #         print(reward)
+        #         reward = reward + (i**2)*1000
 
-        reward = 300 if self.__block1_z > 0.04 else reward
-        if self.__block1_z > 0.04:
+        if self.__block1_z > 0.04 and self.__current_steps==3 and self.reached_grasp_pose(0.06,0.06,0.06):
+            reward = 30
             print("Hurra!")
         #reward = reward + 0.0001*(10-self.__distance_gripper_b1)
         terminated = False
@@ -151,18 +153,18 @@ class ReinforcementLearnerEnvironment(gym.Env):
         msg = Bool()
         msg.data = True
         self.move_arm([0.0,0.0,0.0,0.0,0.0,0.0])
-        self.move_gripper(0.0)
         time.sleep(1.05)
         self.reset_publisher.publish(msg)
+        time.sleep(0.05)
 
         self.__arm_positions = [0.0,0.0,0.0,0.0,0.0,0.0]
         self.__arm_velocities = [0.0,0.0,0.0,0.0,0.0,0.0]
-        self.__block1_x = 0.0
-        self.__block1_y = 0.0
-        self.__block1_z = 0.0
-        self.__block2_x = 0.0
-        self.__block2_y = 0.0
-        self.__block2_z = 0.0
+        old_b1x = self.__block1_x
+        old_b1y = self.__block1_y
+        old_b1z = self.__block1_z
+        old_b2x = self.__block2_x
+        old_b2y = self.__block2_y
+        old_b2z = self.__block2_z
         self.__gripper_x = 0.0
         self.__gripper_y = 0.0
         self.__gripper_z = 0.0
@@ -171,7 +173,7 @@ class ReinforcementLearnerEnvironment(gym.Env):
         self.__distance_b1_b2 = self.__pos_inf
         self.__current_steps = 0
 
-        while(self.__block1_x == 0 and self.__block2_x == 0):
+        while(self.__block1_x == old_b1x and self.__block1_y == old_b1y):
             pass
 
         pos_block1 = [self.__block1_x, self.__block1_y, self.__block1_z]
@@ -266,20 +268,30 @@ def main(args = None):
     rclpy.init(args=args)
     env = ReinforcementLearnerEnvironment()
     Thread(target = updater, args = [env._ReinforcementLearnerEnvironment__node]).start() #Spin Node to update values
-    #env.send_goal([0.0,1.0,0.0,0.0,0.0,0.0])
     #The noise object for DDPG
-    action_noise = NormalActionNoise(mean=np.zeros(4,), sigma=0.06 * np.ones(4,))
+    # action_noise = NormalActionNoise(mean=np.zeros(4,), sigma=0.06 * np.ones(4,))
     
-    model = DDPG("MultiInputPolicy", env, action_noise=action_noise, verbose=1, learning_rate = 0.001, tau = 0.001, learning_starts=50, gamma = 0.99, batch_size=1000, buffer_size= 10000, gradient_steps= 10, train_freq = (1, "episode"))
-    #model = DDPG.load("ddpg_igus_rebel_test3")
+    # #model = DDPG("MultiInputPolicy", env, action_noise=action_noise, verbose=1, learning_rate = 0.001, tau = 0.001, learning_starts=1900, gamma = 0.99, batch_size=1000, buffer_size= 10000, gradient_steps= 10, train_freq = (15, "episode"))
+    # model = DDPG.load("position_controller_static_2_4")
+    # model.set_env(env)
+    # tmp_path = "/tmp/sb3_log/"
+    # # set up logger
+    # new_logger = configure(tmp_path, ["stdout", "csv", "tensorboard"])  
+    # model.set_logger(new_logger)
+    # model.learn(total_timesteps = 19000, log_interval=1)
+    # model.save("position_controller_static_2_5")
+
+    #Commented code is used for predicting using an already trained model:
+
+    model = DDPG.load("position_controller_static_2_5")
     model.set_env(env)
-    tmp_path = "/tmp/sb3_log/"
-    # set up logger
-    new_logger = configure(tmp_path, ["stdout", "csv", "tensorboard"])  
-    model.set_logger(new_logger)
-    model.learn(total_timesteps = 1500, log_interval=1)
-    #test 6 war 0.03 bei allen
-    model.save("position_controller_static")
+    vec_env = model.get_env()
+    obs = vec_env.reset()
+    done = False
+    while True:
+        action, _states = model.predict(obs)
+        obs, rewards, done, info = vec_env.step(action)
+
 
 if __name__ == '__main__':
     main()
