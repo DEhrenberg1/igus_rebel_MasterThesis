@@ -85,9 +85,9 @@ class ObjectPositionPublisher():
                 hj = gripper.getFromProtoDef('hj' + str(i))
                 hj.setJointPosition(0)
             #Variante 0: Danach funktioniert Controller nicht mehr...
-            #igus_rebel = self.__robot.getFromDef('igus_rebel')
-            #hingejoint_one = igus_rebel.getFromProtoDef('hingejoint_one')
-            #hingejoint_one.setJointPosition(0)
+            # igus_rebel = self.__robot.getFromDef('igus_rebel')
+            # hingejoint_one = igus_rebel.getFromProtoDef('hingejoint_one')
+            # hingejoint_one.setJointPosition(0)
             #Variante 1:
             #self.__robot.getSelf().restartController()
             #self.__robot.simulationResetPhysics()

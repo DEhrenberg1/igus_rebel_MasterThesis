@@ -127,17 +127,19 @@ class ReinforcementLearnerEnvironment(gym.Env):
         reward = 0
         #reward = 0.1 if self.reached_grasp_pose(0.2,0.2,0.2) else reward #Hat mit 0.03 auf allen schon fkt. das es reward gab
         #reward = 1 if self.reached_grasp_pose(0.1,0.1,0.1) else reward
-        if self.reached_grasp_pose(0.04,0.04,0.05) and self.__current_steps==2:
+        if self.__current_steps == 2:
+            for i in range(10):
+                i = i/100
+                if self.reached_grasp_pose(0.12-i,0.12-i,0.12-i):
+                    print(reward)
+                    reward = reward + 0.33
+
+        if self.reached_grasp_pose(0.03,0.03,0.03) and self.__current_steps==2:
             reward = 10
             print("10")
-        # for i in range(10):
-        #     i = i/100
-        #     if self.reached_grasp_pose(0.12-i,0.12-i,0.12-i):
-        #         print(reward)
-        #         reward = reward + (i**2)*1000
 
         if self.__block1_z > 0.04 and self.__current_steps==3 and self.reached_grasp_pose(0.06,0.06,0.06):
-            reward = 30
+            reward = 1000
             print("Hurra!")
         #reward = reward + 0.0001*(10-self.__distance_gripper_b1)
         terminated = False
@@ -269,17 +271,17 @@ def main(args = None):
     env = ReinforcementLearnerEnvironment()
     Thread(target = updater, args = [env._ReinforcementLearnerEnvironment__node]).start() #Spin Node to update values
     #The noise object for DDPG
-    # action_noise = NormalActionNoise(mean=np.zeros(4,), sigma=0.06 * np.ones(4,))
+    # action_noise = NormalActionNoise(mean=np.zeros(4,), sigma=0.5 * np.ones(4,))
     
-    # #model = DDPG("MultiInputPolicy", env, action_noise=action_noise, verbose=1, learning_rate = 0.001, tau = 0.001, learning_starts=1900, gamma = 0.99, batch_size=1000, buffer_size= 10000, gradient_steps= 10, train_freq = (15, "episode"))
-    # model = DDPG.load("position_controller_static_2_4")
+    #model = DDPG("MultiInputPolicy", env, action_noise=action_noise, verbose=1, learning_rate = 0.001, tau = 0.001, learning_starts=100, gamma = 0.99, batch_size=1000, buffer_size= 10000, gradient_steps= 10, train_freq = (8, "episode"))
+    # model = DDPG.load("position_controller_static_3_1")
     # model.set_env(env)
     # tmp_path = "/tmp/sb3_log/"
     # # set up logger
     # new_logger = configure(tmp_path, ["stdout", "csv", "tensorboard"])  
     # model.set_logger(new_logger)
-    # model.learn(total_timesteps = 19000, log_interval=1)
-    # model.save("position_controller_static_2_5")
+    # model.learn(total_timesteps = 20000, log_interval=1)
+    # model.save("position_controller_static_3_2")
 
     #Commented code is used for predicting using an already trained model:
 
