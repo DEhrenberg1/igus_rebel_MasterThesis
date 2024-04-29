@@ -5,18 +5,18 @@ EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2022b/project
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2022b/projects/objects/floors/protos/CircleArena.proto"
 IMPORTABLE EXTERNPROTO "../proto/IgusRebel.proto"
 IMPORTABLE EXTERNPROTO "../proto/Robotiq2f85Gripper.proto"
+IMPORTABLE EXTERNPROTO "../proto/Robotiq2f140Gripper.proto"
 
 WorldInfo {
   contactProperties [
     ContactProperties {
-      maxContactJoints 10
-      softCFM 0.00001
+      softCFM 1e-05
     }
   ]
 }
 Viewpoint {
-  orientation -0.15159851682868697 0.10361616225502208 0.9829962261447818 1.8675691913881054
-  position 0.7432686469067321 -1.8795124421029805 0.6694208404574777
+  orientation -0.45219280808963647 0.1872218325499795 0.8720491097000425 2.4189691768845134
+  position 1.2136661567284943 -0.7507486103627656 1.904277617062649
   follow "igus_rebel"
 }
 TexturedBackground {
@@ -64,7 +64,7 @@ DEF block2_solid Solid {
   physics Physics {
   }
 }
-IgusRebel {
+DEF igus_rebel IgusRebel {
   name "igus_rebel"
   controller "<extern>"
   supervisor TRUE
@@ -73,4 +73,3 @@ IgusRebel {
     }
   ]
 }
-

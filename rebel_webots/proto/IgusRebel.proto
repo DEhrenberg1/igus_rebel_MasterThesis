@@ -30,7 +30,7 @@ PROTO IgusRebel [
       DEF Robolink_RebeL_000_visual CadShape {
         url "../meshes/robolink_rebel/Robolink_RebeL_000.dae"
       }
-      HingeJoint {
+      DEF hingejoint_0 HingeJoint {
         jointParameters HingeJointParameters {
           axis 0.000000 -0.000000 -1.000000
           anchor 0.000000 0.000000 0.126000
@@ -60,7 +60,7 @@ PROTO IgusRebel [
                 }
               ]
             }
-            HingeJoint {
+            DEF hingejoint_1 HingeJoint {
               jointParameters HingeJointParameters {
                 axis 0.000000 -1.000000 0.000000
                 anchor 0.000000 0.025000 0.153000
@@ -114,7 +114,7 @@ PROTO IgusRebel [
                               }
                             ]
                           }
-                          HingeJoint {
+                          DEF hingejoint_2 HingeJoint {
                             jointParameters HingeJointParameters {
                               axis 0.000000 -1.000000 0.000000
                               anchor 0.000000 0.025000 0.100000
@@ -143,7 +143,7 @@ PROTO IgusRebel [
                                     }
                                   ]
                                 }
-                                HingeJoint {
+                                DEF hingejoint_3 HingeJoint {
                                   jointParameters HingeJointParameters {
                                     axis 0.000000 0.000000 1.000000
                                     anchor 0.000000 -0.025000 0.153000
@@ -171,7 +171,7 @@ PROTO IgusRebel [
                                           }
                                         ]
                                       }
-                                      HingeJoint {
+                                      DEF hingejoint_4 HingeJoint {
                                         jointParameters HingeJointParameters {
                                           axis 0.000000 -1.000000 0.000000
                                           anchor 0.000000 0.029000 0.143000
@@ -200,7 +200,7 @@ PROTO IgusRebel [
                                                 }
                                               ]
                                             }
-                                            HingeJoint {
+                                            DEF hingejoint_5 HingeJoint {
                                               jointParameters HingeJointParameters {
                                                 axis 0.000000 1.000000 1.000000
                                                 anchor 0.000000 -0.029000 0.118800

@@ -65,9 +65,39 @@ class ObjectPositionPublisher():
     
     def __reset_callback(self, msg):
         if msg.data:
-            self.__robot.getSelf().restartController()
-            self.__robot.simulationResetPhysics()
-            self.__robot.simulationReset()
+            x_1 = np.random.uniform(0.4, 0.6)
+            y_1 = np.random.uniform(-0.25, 0.25)
+
+            translation_b1 = self.__block1.getField('translation')
+            translation_b1.setSFVec3f([x_1, y_1, 0.0125])
+            # Always rotate in direction of (0,0,0) for better grasping chances:
+            angle = np.arctan((y_1/x_1))
+            rotation_b1 = self.__block1.getField('rotation')
+            rotation_b1.setSFRotation([0, 0, 1, angle])
+
+            translation_b2 = self.__block2.getField('translation')
+            translation_b2.setSFVec3f([0.8, 0.0, 0.0125])
+            rotation_b2 = self.__block2.getField('rotation')
+            rotation_b2.setSFRotation([0, 0, 1, 0])
+
+            igus_rebel = self.__robot.getFromDef('igus_rebel')
+
+            j_1 = np.random.uniform(-1.0, 1.0)
+            j_2 = np.random.uniform(0.2, 0.5)
+            j_3 = np.random.uniform(0.1, 0.3)
+            j_4 = np.random.uniform(0.7, 1.4)
+
+            joint_reset_pos = [j_1, j_2, j_3, 0.0, j_4 , 0.0]
+            for i in range(6):
+                hingejoint = igus_rebel.getFromProtoDef('hingejoint_' + str(i))
+                hingejoint.setJointPosition(joint_reset_pos[i])
+
+            for i in range(8):
+                hj = self.__gripper.getFromProtoDef('hj' + str(i))
+                hj.setJointPosition(0)
+            #self.__robot.getSelf().restartController()
+            #self.__robot.simulationResetPhysics()
+            #self.__robot.simulationReset()
     
     def __compute_gripper_pinch_pos(self):
         ##This function computes roughly the pinch position of the fingers (i.e. the position the fingers would meet when closing)

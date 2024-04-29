@@ -7,8 +7,8 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.noise import NormalActionNoise, OrnsteinUhlenbeckActionNoise
 #from controller import Supervisor
 from stable_baselines3.common.logger import configure
-import datetime
-
+import time
+from threading import Thread
 ##Ros2 Message Types
 from sensor_msgs.msg import JointState
 from geometry_msgs.msg import Point
@@ -25,7 +25,7 @@ class ReinforcementLearnerEnvironment(gym.Env):
         ## Constants
         self.__neg_inf = np.finfo(np.float64).min #negative infinity
         self.__pos_inf = np.finfo(np.float64).max #positive infinity
-        self.__max_steps = 150
+        self.__max_steps = 50
         ## Observation variables
         self.__arm_positions = [0.0,0.0,0.0,0.0,0.0,0.0]
         self.__arm_velocities = [0.0,0.0,0.0,0.0,0.0,0.0]
@@ -49,12 +49,13 @@ class ReinforcementLearnerEnvironment(gym.Env):
         self.__sim_time = 0.0
         self.__sim_time_set = False
         self.__start_time = 0.0
+        self.__reached_grasp_pos = False
         ## OpenAI Stuff
-        self.action_space = spaces.Box(low = -0.4, high = 0.4, shape = (6,), dtype=np.float64) #Velocity controller of all six joints
+        self.action_space = spaces.Box(low = -0.4, high = 0.4, shape = (4,), dtype=np.float64) #Velocity controller of all six joints
         self.observation_space = spaces.Dict(
             {
-                "rebel_arm_position": spaces.Box(self.__neg_inf, self.__pos_inf, shape= (6,), dtype=np.float64),
-                "rebel_arm_velocity": spaces.Box(-1.1, 1.1, shape = (6,), dtype=np.float64),
+                "rebel_arm_position": spaces.Box(self.__neg_inf, self.__pos_inf, shape= (4,), dtype=np.float64),
+                "rebel_arm_velocity": spaces.Box(-1.1, 1.1, shape = (4,), dtype=np.float64),
                 "position_block_1": spaces.Box(-3, 3, shape = (3,), dtype=np.float64),
                 "position_gripper": spaces.Box(-3, 3, shape = (3,), dtype=np.float64),
                 "distance_to_block" : spaces.Box(0, self.__pos_inf, shape = (1,), dtype=np.float64)
@@ -73,42 +74,73 @@ class ReinforcementLearnerEnvironment(gym.Env):
         self.__arm_publisher = self.__node.create_publisher(Float64MultiArray, '/joint_trajectory/command', 10)
         self.__gripper_publisher = self.__node.create_publisher(JointTrajectory, '/gripper_driver/command', 10)
         self.reset_publisher = self.__node.create_publisher(Bool, '/reset', 10)
+    
+    def limitedAction(self, action):
+        lim_act = [action[0], action[1], action[2], 0.0, action[3], 0.0] #limited joint velocities
+        joint_lim_max = [1.0,1.0,1.0,0.0,1.5,0.0]
+        joint_lim_min = [-1.0,0.1,0.2,0.0,0.3,0.0]
+        #Do not exceed the joint position limits specified in joint_lim_max and joint_lim_min:
+        for i in range(6):
+            if self.__arm_positions[i] > joint_lim_max[i]:
+                lim_act[i] = 0.0 if lim_act[i] > 0.0 else lim_act[i]
+            if self.__arm_positions[i] < joint_lim_min[i]:
+                lim_act[i] = 0.0 if lim_act[i] < 0.0 else lim_act[i]
+        
+        return lim_act
 
     ## Rewriting step and reset function of OpenAIGym for our Use Case:
     def step(self, action):
-        self.move_arm([action[0], action[1], action[2], action[3], action[4], action[5]])
+        action = self.limitedAction(action)
+        self.move_arm(action)
         self.__current_steps += 1
         if self.__current_steps == 1:
             self.__start_time = self.__sim_time
-        ##Condition for when the action is completed
-        action_executed = False
-        self.__pos_b1_set = False
-        self.__pos_b2_set = False
-        #self.__joint_state_set = False
-        self.__pos_gripper_set = False
-        self.__distance_set = False
-        self.__sim_time_set = False
-        #i = datetime.datetime.now()
-        while not action_executed:
-            rclpy.spin_once(self.__node, timeout_sec=0)
-            action_executed = self.__pos_b1_set and self.__pos_b2_set and self.__joint_state_set and self.__pos_gripper_set and self.__distance_set and self.__sim_time_set
-        #q = datetime.datetime.now()
-        #print((q-i).seconds)
-        #print((q-i).microseconds)
+        for _ in range(4):
+            ##Condition for when the action is completed
+            action_executed = False
+            self.__pos_b1_set = False
+            self.__pos_b2_set = False
+            #self.__joint_state_set = False
+            self.__pos_gripper_set = False
+            self.__distance_set = False
+            self.__sim_time_set = False
+            #i = datetime.datetime.now()
+            while not action_executed:
+                action_executed = self.__pos_b1_set and self.__pos_b2_set and self.__joint_state_set and self.__pos_gripper_set and self.__distance_set and self.__sim_time_set
+
         pos_block1 = [self.__block1_x, self.__block1_y, self.__block1_z]
         pos_gripper = [self.__gripper_x, self.__gripper_y, self.__gripper_z]
+        rel_arm_pos = [self.__arm_positions[0],self.__arm_positions[1],self.__arm_positions[2],self.__arm_positions[4]]
+        rel_arm_vel = [self.__arm_velocities[0], self.__arm_velocities[1], self.__arm_velocities[2], self.__arm_velocities[4]]
 
-        observation = {"position_block_1": pos_block1, "position_gripper": pos_gripper, "rebel_arm_position": self.__arm_positions, "rebel_arm_velocity": self.__arm_velocities, "distance_to_block": [self.__distance_gripper_b1]}
+        observation = {"position_block_1": pos_block1, "position_gripper": pos_gripper, "rebel_arm_position": rel_arm_pos, "rebel_arm_velocity": rel_arm_vel, "distance_to_block": self.__distance_gripper_b1}
         #observation = {"distance_to_block": self.__distance_gripper_b1}
 
-        reward = 0.1 if self.reached_grasp_pose(0.1,0.1,0.1) else 0 #Hat mit 0.03 auf allen schon fkt. das es reward gab
-        reward = (reward + 1) if self.reached_grasp_pose(0.03,0.03,0.03) else reward
-        reward = (reward + 10) if self.reached_grasp_pose(0.02,0.02,0.02) else reward 
-        reward = reward + 0.0001*(10-self.__distance_gripper_b1)
+        reward = 0
+        #reward = -0.01 if not self.reached_grasp_pose(0.3,0.3,0.3) else reward
+        reward = 0.01 if self.reached_grasp_pose(0.1,0.1,0.1) else reward
+        #reward = 0.01 if self.reached_grasp_pose(0.15,0.15,0.15) else reward #Hat mit 0.03 auf allen schon fkt. das es reward gab
+        #reward = (reward + 1) if self.reached_grasp_pose(0.04,0.04,0.04) else reward
+        #reward = (reward + 10) if self.reached_grasp_pose(0.03,0.03,0.03) else reward 
+        if self.reached_grasp_pose(0.03,0.03,0.03):
+            if self.__reached_grasp_pos: #If for 2 consecutive states grasp pose was reached, then grab.
+                #self.move_gripper(0.8)
+                pass
+            self.__reached_grasp_pos = True
+            reward = reward +10
+            print("Hurra!")
+        else:
+            self.__reached_grasp_pos = False
+        
+        if self.__block1_z > 0.04 and self.reached_grasp_pose(0.05,0.05,0.05):
+            reward = reward + 1000
+        #reward = reward + 0.01*(1-self.__distance_gripper_b1)
         #if self.__gripper_z <= 0.02:
         #    reward = reward - 1
         terminated = False
         truncated = True if (self.__current_steps>=self.__max_steps) else False
+        truncated = True if (self.__gripper_z <= 0.004) else truncated
+        #reward = -0.5 if (self.__gripper_z <= 0.004) else reward
         if truncated:
         #    reward = reward + 0.01*(10-self.__distance_gripper_b1)
             print(self.__current_steps)
@@ -118,18 +150,15 @@ class ReinforcementLearnerEnvironment(gym.Env):
     def reset (self, seed=None, options=None):
         super().reset(seed=seed)
         print("simulation will be reset")
-        msg = Bool()
-        msg.data = True
-        self.reset_publisher.publish(msg)
 
         self.__arm_positions = [0.0,0.0,0.0,0.0,0.0,0.0]
         self.__arm_velocities = [0.0,0.0,0.0,0.0,0.0,0.0]
-        self.__block1_x = 0.0
-        self.__block1_y = 0.0
-        self.__block1_z = 0.0
-        self.__block2_x = 0.0
-        self.__block2_y = 0.0
-        self.__block2_z = 0.0
+        old_b1x = self.__block1_x
+        old_b1y = self.__block1_y
+        old_b1z = self.__block1_z
+        old_b2x = self.__block2_x
+        old_b2y = self.__block2_y
+        old_b2z = self.__block2_z
         self.__gripper_x = 0.0
         self.__gripper_y = 0.0
         self.__gripper_z = 0.0
@@ -137,12 +166,24 @@ class ReinforcementLearnerEnvironment(gym.Env):
         self.__distance_gripper_b2 = self.__pos_inf
         self.__distance_b1_b2 = self.__pos_inf
         self.__current_steps = 0
-        self.__sim_time = 0.0
-        self.__start_time = 0.0
+        self.__reached_grasp_pos = False
+
+        msg = Bool()
+        msg.data = True
+        self.reset_publisher.publish(msg)
+
+        #Wait until world is reset and we know the new position of the blocks
+        while(self.__block1_x == old_b1x and self.__block1_y == old_b1y):
+            pass
+
+        time.sleep(0.1) #Wait until simulation is stable
 
         pos_block1 = [self.__block1_x, self.__block1_y, self.__block1_z]
         pos_gripper = [self.__gripper_x, self.__gripper_y, self.__gripper_z]
-        observation = {"position_block_1": pos_block1, "position_gripper": pos_gripper, "rebel_arm_position": self.__arm_positions, "rebel_arm_velocity": self.__arm_velocities, "distance_to_block": [self.__distance_gripper_b1]}
+
+        rel_arm_pos = [self.__arm_positions[0],self.__arm_positions[1],self.__arm_positions[2],self.__arm_positions[4]]
+        rel_arm_vel = [self.__arm_velocities[0], self.__arm_velocities[1], self.__arm_velocities[2], self.__arm_velocities[4]]
+        observation = {"position_block_1": pos_block1, "position_gripper": pos_gripper, "rebel_arm_position": rel_arm_pos, "rebel_arm_velocity": rel_arm_vel, "distance_to_block": [self.__distance_gripper_b1]}
         info = {}
         return observation, info
     
@@ -155,8 +196,13 @@ class ReinforcementLearnerEnvironment(gym.Env):
 
     ## The Functions below are used for ROS2-Communication:
     def __joint_state_callback(self, joint_state):
-        self.__arm_positions = joint_state.position
-        self.__arm_velocities = joint_state.velocity
+        arm_name = joint_state.name
+        self.__arm_positions = []
+        self.__arm_velocities = []
+        for i in range(6):
+            ind = arm_name.index("joint" + str(i+1))
+            self.__arm_positions.append(joint_state.position[ind])
+            self.__arm_velocities.append(joint_state.velocity[ind])
         self.__joint_state_set = True
     
     def __pos_block1_callback(self, pos):
@@ -210,25 +256,39 @@ class ReinforcementLearnerEnvironment(gym.Env):
 
         return (check_x and check_y and check_z)
 
+def updater(node):
+    while True:
+        rclpy.spin(node)
+
 def main(args = None):
     rclpy.init(args=args)
     env = ReinforcementLearnerEnvironment()
+    Thread(target = updater, args = [env._ReinforcementLearnerEnvironment__node]).start() #Spin Node to update values
     # The noise object for DDPG
-    # action_noise = NormalActionNoise(mean=np.zeros(6,), sigma=0.2 * np.ones(6,))
-    action_noise = OrnsteinUhlenbeckActionNoise(mean=np.zeros(6,), sigma=0.2 * np.ones(6,), theta = 0.01)
+    action_noise = NormalActionNoise(mean=np.zeros(4,), sigma=1 * np.ones(4,))
+    # action_noise = OrnsteinUhlenbeckActionNoise(mean=np.zeros(4,), sigma=1.0 * np.ones(4,), theta = 0.01)
 
     
-    model = DDPG("MultiInputPolicy", env, action_noise=action_noise, verbose=1, learning_rate = 0.001, tau = 0.001, learning_starts=2000, gamma = 0.99, batch_size=3, buffer_size= 70000, gradient_steps= 10, train_freq = (1, "episode"))
-    #model = DDPG.load("ddpg_igus_rebel_test3")
-    #model.set_env(env)
-    #model = PPO("MultiInputPolicy", env=env, batch_size=3,n_epochs=2,n_steps=450)
-    tmp_path = "/tmp/sb3_log/"
-    # set up logger
-    new_logger = configure(tmp_path, ["stdout", "csv", "tensorboard"])  
-    model.set_logger(new_logger)
-    model.learn(total_timesteps = 100000, log_interval=1)
-    #test 6 war 0.03 bei allen
-    model.save("PPO_test_")
+    # #model = DDPG("MultiInputPolicy", env, action_noise=action_noise, verbose=1, learning_rate = 0.001, tau = 0.001, learning_starts=20000, gamma = 0.99, batch_size=32  , buffer_size= 200000, gradient_steps= 3, train_freq = (1, "episode"))
+    # model = DDPG.load("so_langsam_werd_ich_desperate_3")
+    # model.set_env(env)
+    # #model = PPO("MultiInputPolicy", env=env, batch_size=3,n_epochs=2,n_steps=450)
+    # tmp_path = "/tmp/sb3_log/"
+    # # set up logger
+    # new_logger = configure(tmp_path, ["stdout", "csv", "tensorboard"])  
+    # model.set_logger(new_logger)
+    # model.learn(total_timesteps = 90000, log_interval=1)
+    # #test 6 war 0.03 bei allen
+    # model.save("so_langsam_werd_ich_desperate_mit_gripper_0")
+
+    model = DDPG.load("so_langsam_werd_ich_desperate_2")
+    model.set_env(env)
+    vec_env = model.get_env()
+    obs = vec_env.reset()
+    done = False
+    while True:
+        action, _states = model.predict(obs)
+        obs, rewards, done, info = vec_env.step(action)
 
 if __name__ == '__main__':
     main()

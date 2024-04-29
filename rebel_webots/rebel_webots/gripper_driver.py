@@ -5,7 +5,7 @@ from trajectory_msgs.msg import JointTrajectory
 class GripperDriver():
     def init(self, webots_node, properties):
         self.__robot = webots_node.robot
-        self.__left_finger_joint = self.__robot.getDevice('ROBOTIQ 2F-85 Gripper::left finger joint')
+        self.__left_finger_joint = self.__robot.getDevice('ROBOTIQ 2F-85 Gripper::right finger joint')
         #rclpy.init(args=None)
         self.__node = rclpy.create_node('gripper_driver')
         self.__node.create_subscription(JointTrajectory, 'gripper_driver/command', self.__trajectory_callback, 1)
