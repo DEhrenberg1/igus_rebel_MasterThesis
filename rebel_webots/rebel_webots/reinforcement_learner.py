@@ -49,14 +49,16 @@ class ReinforcementLearnerEnvironment(gym.Env):
         self.__sim_time = 0.0
         self.__sim_time_set = False
         self.__start_time = 0.0
-        self.__reached_grasp_pos = False
         self.__grasped = False
+        self.__gripper_joint_pos = 0.0
+        self.__gripper_joint_pos_set = False
         ## OpenAI Stuff
-        self.action_space = spaces.Box(low = -0.4, high = 0.4, shape = (4,), dtype=np.float64) #Velocity controller of all six joints
+        self.action_space = spaces.Box(low = np.array([-0.4,-0.4,-0.4,-0.4,0.0]), high = np.array([0.4,0.4,0.4,0.4,0.8]), shape = (5,), dtype=np.float64) #Velocity controller of all six joints
         self.observation_space = spaces.Dict(
             {
-                "rebel_arm_position": spaces.Box(self.__neg_inf, self.__pos_inf, shape= (4,), dtype=np.float64),
+                "rebel_arm_position": spaces.Box(-10.0, 10.0, shape= (4,), dtype=np.float64),
                 "rebel_arm_velocity": spaces.Box(-1.1, 1.1, shape = (4,), dtype=np.float64),
+                "gripper_position": spaces.Box(-0.1, 1.1, shape=(1,), dtype=np.float64),
                 "position_block_1": spaces.Box(-3, 3, shape = (3,), dtype=np.float64),
                 "position_gripper": spaces.Box(-3, 3, shape = (3,), dtype=np.float64),
                 "distance_to_block" : spaces.Box(0, self.__pos_inf, shape = (1,), dtype=np.float64)
@@ -71,6 +73,7 @@ class ReinforcementLearnerEnvironment(gym.Env):
         self.__node.create_subscription(Point, '/position/gripper', self.__pos_gripper_callback, 1)
         self.__node.create_subscription(Point, '/distance', self.__distance_callback, 1)
         self.__node.create_subscription(Float64, '/sim_time', self.__sim_time_callback, 1)
+        self.__node.create_subscription(Float64, '/gripper_driver/state', self.__gripper_state_callback, 1)
         #self.__arm_publisher = self.__node.create_publisher(Float64MultiArray, '/rebel_arm_controller/commands', 10)
         self.__arm_publisher = self.__node.create_publisher(Float64MultiArray, '/joint_trajectory/command', 10)
         self.__gripper_publisher = self.__node.create_publisher(JointTrajectory, '/gripper_driver/command', 10)
@@ -78,8 +81,8 @@ class ReinforcementLearnerEnvironment(gym.Env):
     
     def limitedAction(self, action):
         lim_act = [action[0], action[1], action[2], 0.0, action[3], 0.0] #limited joint velocities
-        joint_lim_max = [1.0,1.0,1.0,0.0,1.5,0.0]
-        joint_lim_min = [-1.0,0.1,0.2,0.0,0.3,0.0]
+        joint_lim_max = [1.0,1.0,1.2,0.0,1.5,0.0]
+        joint_lim_min = [-1.0,-0.2,0.2,0.0,0.3,0.0]
         #Do not exceed the joint position limits specified in joint_lim_max and joint_lim_min:
         for i in range(6):
             if self.__arm_positions[i] > joint_lim_max[i]:
@@ -91,8 +94,9 @@ class ReinforcementLearnerEnvironment(gym.Env):
 
     ## Rewriting step and reset function of OpenAIGym for our Use Case:
     def step(self, action):
-        action = self.limitedAction(action)
-        self.move_arm(action)
+        lim_act = self.limitedAction(action)
+        self.move_arm(lim_act)
+        self.move_gripper(action[4])
         self.__current_steps += 1
         if self.__current_steps == 1:
             self.__start_time = self.__sim_time
@@ -105,48 +109,36 @@ class ReinforcementLearnerEnvironment(gym.Env):
             self.__pos_gripper_set = False
             self.__distance_set = False
             self.__sim_time_set = False
+            self.__gripper_joint_pos_set = False
             #i = datetime.datetime.now()
             while not action_executed:
-                action_executed = self.__pos_b1_set and self.__pos_b2_set and self.__joint_state_set and self.__pos_gripper_set and self.__distance_set and self.__sim_time_set
+                action_executed = self.__pos_b1_set and self.__pos_b2_set and self.__joint_state_set and self.__pos_gripper_set and self.__distance_set and self.__sim_time_set and self.__gripper_joint_pos_set
 
         pos_block1 = [self.__block1_x, self.__block1_y, self.__block1_z]
         pos_gripper = [self.__gripper_x, self.__gripper_y, self.__gripper_z]
         rel_arm_pos = [self.__arm_positions[0],self.__arm_positions[1],self.__arm_positions[2],self.__arm_positions[4]]
         rel_arm_vel = [self.__arm_velocities[0], self.__arm_velocities[1], self.__arm_velocities[2], self.__arm_velocities[4]]
 
-        observation = {"position_block_1": pos_block1, "position_gripper": pos_gripper, "rebel_arm_position": rel_arm_pos, "rebel_arm_velocity": rel_arm_vel, "distance_to_block": self.__distance_gripper_b1}
+        print(self.__gripper_joint_pos)
+        observation = {"gripper_position": self.__gripper_joint_pos, "position_block_1": pos_block1, "position_gripper": pos_gripper, "rebel_arm_position": rel_arm_pos, "rebel_arm_velocity": rel_arm_vel, "distance_to_block": self.__distance_gripper_b1}
         #observation = {"distance_to_block": self.__distance_gripper_b1}
 
         reward = 0
-        #reward = -0.01 if not self.reached_grasp_pose(0.3,0.3,0.3) else reward
-        reward = 0.01 if self.reached_grasp_pose(0.1,0.1,0.1) else reward
-        #reward = 0.01 if self.reached_grasp_pose(0.15,0.15,0.15) else reward #Hat mit 0.03 auf allen schon fkt. das es reward gab
-        #reward = (reward + 1) if self.reached_grasp_pose(0.04,0.04,0.04) else reward
-        #reward = (reward + 10) if self.reached_grasp_pose(0.03,0.03,0.03) else reward 
-        if self.reached_grasp_pose(0.03,0.03,0.03):
-            if self.__reached_grasp_pos and not self.__grasped: #If for 2 consecutive states grasp pose was reached, then grab.
-                #self.move_gripper(0.8)
-                self.__grasped = True
-                pass
-            self.__reached_grasp_pos = True
+        reward = 0.01 if self.reached_grasp_pose(0.1,0.1,0.1) else reward #Got somewhat close to grasp position
+
+        if self.reached_grasp_pose(0.025,0.025,0.03): #Reached Grasp Pose
             reward = reward + 10
-            #print("Hurra!")
-        else:
-            self.__reached_grasp_pos = False
+            print("Hurra!")
         
-        if self.__block1_z > 0.04 and self.reached_grasp_pose(0.05,0.05,0.05):
-            #reward = reward + 40
-            #print("+40")
+        if self.__block1_z > 0.04 and self.reached_grasp_pose(0.04,0.04,0.04): #Successful Grasp
+            reward = reward + 50
             pass
-        #reward = reward + 0.01*(1-self.__distance_gripper_b1)
-        #if self.__gripper_z <= 0.02:
-        #    reward = reward - 1
+
         terminated = False
         truncated = True if (self.__current_steps>=self.__max_steps) else False
         truncated = True if (self.__gripper_z <= 0.004) else truncated
-        #reward = -0.5 if (self.__gripper_z <= 0.004) else reward
+
         if truncated:
-        #    reward = reward + 0.01*(10-self.__distance_gripper_b1)
             print(self.__current_steps)
         info = {}
         return observation, reward, terminated, truncated, info
@@ -170,8 +162,9 @@ class ReinforcementLearnerEnvironment(gym.Env):
         self.__distance_gripper_b2 = self.__pos_inf
         self.__distance_b1_b2 = self.__pos_inf
         self.__current_steps = 0
-        self.__reached_grasp_pos = False
         self.__grasped = False
+        self.__gripper_joint_pos = 0.0
+        self.__gripper_joint_pos_set = False
 
         msg = Bool()
         msg.data = True
@@ -188,7 +181,7 @@ class ReinforcementLearnerEnvironment(gym.Env):
 
         rel_arm_pos = [self.__arm_positions[0],self.__arm_positions[1],self.__arm_positions[2],self.__arm_positions[4]]
         rel_arm_vel = [self.__arm_velocities[0], self.__arm_velocities[1], self.__arm_velocities[2], self.__arm_velocities[4]]
-        observation = {"position_block_1": pos_block1, "position_gripper": pos_gripper, "rebel_arm_position": rel_arm_pos, "rebel_arm_velocity": rel_arm_vel, "distance_to_block": [self.__distance_gripper_b1]}
+        observation = {"gripper_position": self.__gripper_joint_pos, "position_block_1": pos_block1, "position_gripper": pos_gripper, "rebel_arm_position": rel_arm_pos, "rebel_arm_velocity": rel_arm_vel, "distance_to_block": [self.__distance_gripper_b1]}
         info = {}
         return observation, info
     
@@ -227,6 +220,10 @@ class ReinforcementLearnerEnvironment(gym.Env):
         self.__gripper_y = pos.y
         self.__gripper_z = pos.z
         self.__pos_gripper_set = True
+    
+    def __gripper_state_callback(self, msg):
+        self.__gripper_joint_pos = msg.data
+        self.__gripper_joint_pos_set = True
 
     def __distance_callback(self, pos):
         self.__distance_b1_b2 = pos.x
@@ -270,51 +267,52 @@ def main(args = None):
     env = ReinforcementLearnerEnvironment()
     Thread(target = updater, args = [env._ReinforcementLearnerEnvironment__node]).start() #Spin Node to update values
     # The noise object for DDPG
-    action_noise = NormalActionNoise(mean=np.zeros(4,), sigma=0.1 * np.ones(4,))
+    action_noise = NormalActionNoise(mean=np.zeros(5,), sigma=np.array([0.8, 0.8, 0.8, 0.8, 0.3]))
     # action_noise = OrnsteinUhlenbeckActionNoise(mean=np.zeros(4,), sigma=1.0 * np.ones(4,), theta = 0.01)
 
     
-    # #model = DDPG("MultiInputPolicy", env, action_noise=action_noise, verbose=1, learning_rate = 0.001, tau = 0.001, learning_starts=20000, gamma = 0.99, batch_size=32  , buffer_size= 200000, gradient_steps= 3, train_freq = (1, "episode"))
-    # model = DDPG.load("so_langsam_werd_ich_desperate_2", learning_starts = 0, action_noise = action_noise, gradient_steps = 5)
-    # model.set_env(env)
-    # #model = PPO("MultiInputPolicy", env=env, batch_size=3,n_epochs=2,n_steps=450)
-    # tmp_path = "/tmp/sb3_log/"
-    # # set up logger
-    # new_logger = configure(tmp_path, ["stdout", "csv", "tensorboard"])  
-    # model.set_logger(new_logger)
-    # model.learn(total_timesteps = 180000, log_interval=1)
-    # #test 6 war 0.03 bei allen
-    # model.save("so_langsam_werd_ich_desperate_2_1")
+    model = DDPG("MultiInputPolicy", env, action_noise=action_noise, verbose=1, learning_rate = 0.001, tau = 0.001, learning_starts=20000, gamma = 0.99, batch_size=32  , buffer_size= 200000, gradient_steps= 5, train_freq = (1, "episode"))
 
-    model = DDPG.load("so_langsam_werd_ich_desperate_2_1")
-    model.set_env(env)
-    vec_env = model.get_env()
-    obs = vec_env.reset()
-    done = False
-    reward = 0
-    succeed = 0
-    failed = 0
-    trials = 0
-    while True:
-        done = False
-        trials = trials + 1
-        while not done:
-            action, _states = model.predict(obs)
-            obs, rewards, done, info = vec_env.step(action)
-            reward = reward + rewards
-            if reward > 100:
-                env.move_gripper(0.8)
-                time.sleep(0.4)
-                for _ in range(15):
-                    lim_act = env.limitedAction([0.0,-0.4,0.0,0.0])
-                    env.move_arm(lim_act)
-                    time.sleep(0.1)
-                if env._ReinforcementLearnerEnvironment__block1_z > 0.05:
-                    succeed = succeed + 1
-                obs = vec_env.reset()
-                reward = 0
-                done = True
-        print("Success rate: " + str(succeed/trials))
+    #model = DDPG.load("so_langsam_werd_ich_desperate_2", learning_starts = 0, action_noise = action_noise, gradient_steps = 5)
+    #model.set_env(env)
+    #model = PPO("MultiInputPolicy", env=env, batch_size=3,n_epochs=2,n_steps=450)
+    tmp_path = "/tmp/sb3_log/"
+    # set up logger
+    new_logger = configure(tmp_path, ["stdout", "csv", "tensorboard"])  
+    model.set_logger(new_logger)
+    model.learn(total_timesteps = 180000, log_interval=1)
+    #test 6 war 0.03 bei allen
+    model.save("vel_and_gripper_control_0")
+
+    # model = DDPG.load("so_langsam_werd_ich_desperate_2_1")
+    # model.set_env(env)
+    # vec_env = model.get_env()
+    # obs = vec_env.reset()
+    # done = False
+    # reward = 0
+    # succeed = 0
+    # failed = 0
+    # trials = 0
+    # while True:
+    #     done = False
+    #     trials = trials + 1
+    #     while not done:
+    #         action, _states = model.predict(obs)
+    #         obs, rewards, done, info = vec_env.step(action)
+    #         reward = reward + rewards
+    #         if reward > 100:
+    #             env.move_gripper(0.8)
+    #             time.sleep(0.4)
+    #             for _ in range(15):
+    #                 lim_act = env.limitedAction([0.0,-0.4,0.0,0.0])
+    #                 env.move_arm(lim_act)
+    #                 time.sleep(0.1)
+    #             if env._ReinforcementLearnerEnvironment__block1_z > 0.05:
+    #                 succeed = succeed + 1
+    #             obs = vec_env.reset()
+    #             reward = 0
+    #             done = True
+    #     print("Success rate: " + str(succeed/trials))
 
 
         # if reward > 10:
@@ -324,8 +322,8 @@ def main(args = None):
         # success_rate = succeed / (succeed + failed)
         # print("Success rate: " + str(success_rate))
         # print("Number of tries: " + str((succeed + failed)))
-        reward = 0
-        done = False
+        # reward = 0
+        # done = False
 
 if __name__ == '__main__':
     main()
