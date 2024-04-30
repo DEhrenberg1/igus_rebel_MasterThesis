@@ -50,6 +50,7 @@ class ReinforcementLearnerEnvironment(gym.Env):
         self.__sim_time_set = False
         self.__start_time = 0.0
         self.__reached_grasp_pos = False
+        self.__grasped = False
         ## OpenAI Stuff
         self.action_space = spaces.Box(low = -0.4, high = 0.4, shape = (4,), dtype=np.float64) #Velocity controller of all six joints
         self.observation_space = spaces.Dict(
@@ -123,17 +124,20 @@ class ReinforcementLearnerEnvironment(gym.Env):
         #reward = (reward + 1) if self.reached_grasp_pose(0.04,0.04,0.04) else reward
         #reward = (reward + 10) if self.reached_grasp_pose(0.03,0.03,0.03) else reward 
         if self.reached_grasp_pose(0.03,0.03,0.03):
-            if self.__reached_grasp_pos: #If for 2 consecutive states grasp pose was reached, then grab.
+            if self.__reached_grasp_pos and not self.__grasped: #If for 2 consecutive states grasp pose was reached, then grab.
                 #self.move_gripper(0.8)
+                self.__grasped = True
                 pass
             self.__reached_grasp_pos = True
-            reward = reward +10
-            print("Hurra!")
+            reward = reward + 10
+            #print("Hurra!")
         else:
             self.__reached_grasp_pos = False
         
         if self.__block1_z > 0.04 and self.reached_grasp_pose(0.05,0.05,0.05):
-            reward = reward + 1000
+            #reward = reward + 40
+            #print("+40")
+            pass
         #reward = reward + 0.01*(1-self.__distance_gripper_b1)
         #if self.__gripper_z <= 0.02:
         #    reward = reward - 1
@@ -167,6 +171,7 @@ class ReinforcementLearnerEnvironment(gym.Env):
         self.__distance_b1_b2 = self.__pos_inf
         self.__current_steps = 0
         self.__reached_grasp_pos = False
+        self.__grasped = False
 
         msg = Bool()
         msg.data = True
@@ -265,30 +270,62 @@ def main(args = None):
     env = ReinforcementLearnerEnvironment()
     Thread(target = updater, args = [env._ReinforcementLearnerEnvironment__node]).start() #Spin Node to update values
     # The noise object for DDPG
-    action_noise = NormalActionNoise(mean=np.zeros(4,), sigma=1 * np.ones(4,))
+    action_noise = NormalActionNoise(mean=np.zeros(4,), sigma=0.1 * np.ones(4,))
     # action_noise = OrnsteinUhlenbeckActionNoise(mean=np.zeros(4,), sigma=1.0 * np.ones(4,), theta = 0.01)
 
     
     # #model = DDPG("MultiInputPolicy", env, action_noise=action_noise, verbose=1, learning_rate = 0.001, tau = 0.001, learning_starts=20000, gamma = 0.99, batch_size=32  , buffer_size= 200000, gradient_steps= 3, train_freq = (1, "episode"))
-    # model = DDPG.load("so_langsam_werd_ich_desperate_3")
+    # model = DDPG.load("so_langsam_werd_ich_desperate_2", learning_starts = 0, action_noise = action_noise, gradient_steps = 5)
     # model.set_env(env)
     # #model = PPO("MultiInputPolicy", env=env, batch_size=3,n_epochs=2,n_steps=450)
     # tmp_path = "/tmp/sb3_log/"
     # # set up logger
     # new_logger = configure(tmp_path, ["stdout", "csv", "tensorboard"])  
     # model.set_logger(new_logger)
-    # model.learn(total_timesteps = 90000, log_interval=1)
+    # model.learn(total_timesteps = 180000, log_interval=1)
     # #test 6 war 0.03 bei allen
-    # model.save("so_langsam_werd_ich_desperate_mit_gripper_0")
+    # model.save("so_langsam_werd_ich_desperate_2_1")
 
-    model = DDPG.load("so_langsam_werd_ich_desperate_2")
+    model = DDPG.load("so_langsam_werd_ich_desperate_2_1")
     model.set_env(env)
     vec_env = model.get_env()
     obs = vec_env.reset()
     done = False
+    reward = 0
+    succeed = 0
+    failed = 0
+    trials = 0
     while True:
-        action, _states = model.predict(obs)
-        obs, rewards, done, info = vec_env.step(action)
+        done = False
+        trials = trials + 1
+        while not done:
+            action, _states = model.predict(obs)
+            obs, rewards, done, info = vec_env.step(action)
+            reward = reward + rewards
+            if reward > 100:
+                env.move_gripper(0.8)
+                time.sleep(0.4)
+                for _ in range(15):
+                    lim_act = env.limitedAction([0.0,-0.4,0.0,0.0])
+                    env.move_arm(lim_act)
+                    time.sleep(0.1)
+                if env._ReinforcementLearnerEnvironment__block1_z > 0.05:
+                    succeed = succeed + 1
+                obs = vec_env.reset()
+                reward = 0
+                done = True
+        print("Success rate: " + str(succeed/trials))
+
+
+        # if reward > 10:
+        #     succeed = succeed + 1
+        # else:
+        #     failed = failed + 1
+        # success_rate = succeed / (succeed + failed)
+        # print("Success rate: " + str(success_rate))
+        # print("Number of tries: " + str((succeed + failed)))
+        reward = 0
+        done = False
 
 if __name__ == '__main__':
     main()
