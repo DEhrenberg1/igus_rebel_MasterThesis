@@ -119,19 +119,19 @@ class ReinforcementLearnerEnvironment(gym.Env):
         rel_arm_pos = [self.__arm_positions[0],self.__arm_positions[1],self.__arm_positions[2],self.__arm_positions[4]]
         rel_arm_vel = [self.__arm_velocities[0], self.__arm_velocities[1], self.__arm_velocities[2], self.__arm_velocities[4]]
 
-        print(self.__gripper_joint_pos)
         observation = {"gripper_position": self.__gripper_joint_pos, "position_block_1": pos_block1, "position_gripper": pos_gripper, "rebel_arm_position": rel_arm_pos, "rebel_arm_velocity": rel_arm_vel, "distance_to_block": self.__distance_gripper_b1}
         #observation = {"distance_to_block": self.__distance_gripper_b1}
 
         reward = 0
-        reward = 0.01 if self.reached_grasp_pose(0.1,0.1,0.1) else reward #Got somewhat close to grasp position
+        #reward = 0.01 if self.reached_grasp_pose(0.1,0.1,0.1) else reward #Got somewhat close to grasp position
 
         if self.reached_grasp_pose(0.025,0.025,0.03): #Reached Grasp Pose
             reward = reward + 10
             print("Hurra!")
         
-        if self.__block1_z > 0.04 and self.reached_grasp_pose(0.04,0.04,0.04): #Successful Grasp
+        if self.__block1_z > 0.055 and self.reached_grasp_pose(0.025,0.025,0.03): #Successful Grasp
             reward = reward + 50
+            print("Lifted up!")
             pass
 
         terminated = False
@@ -267,52 +267,61 @@ def main(args = None):
     env = ReinforcementLearnerEnvironment()
     Thread(target = updater, args = [env._ReinforcementLearnerEnvironment__node]).start() #Spin Node to update values
     # The noise object for DDPG
-    action_noise = NormalActionNoise(mean=np.zeros(5,), sigma=np.array([0.8, 0.8, 0.8, 0.8, 0.3]))
+    action_noise = NormalActionNoise(mean=np.zeros(5,), sigma=np.array([0.1, 0.1, 0.1, 0.1, 1.4]))
     # action_noise = OrnsteinUhlenbeckActionNoise(mean=np.zeros(4,), sigma=1.0 * np.ones(4,), theta = 0.01)
 
     
-    model = DDPG("MultiInputPolicy", env, action_noise=action_noise, verbose=1, learning_rate = 0.001, tau = 0.001, learning_starts=20000, gamma = 0.99, batch_size=32  , buffer_size= 200000, gradient_steps= 5, train_freq = (1, "episode"))
+    # # model = DDPG("MultiInputPolicy", env, action_noise=action_noise, verbose=1, learning_rate = 0.001, tau = 0.001, learning_starts=50000, gamma = 0.99, batch_size=32  , buffer_size= 200000, gradient_steps= 3, train_freq = (1, "episode"))
+    # #1_2 hat 56% grasping success
+    # model = DDPG.load("vel_and_gripper_control_1_2", learning_starts = 0, action_noise = action_noise, gradient_steps = 3)
+    # model.set_env(env)
+    # #model = PPO("MultiInputPolicy", env=env, batch_size=3,n_epochs=2,n_steps=450)
+    # tmp_path = "/tmp/sb3_log/"
+    # # set up logger
+    # new_logger = configure(tmp_path, ["stdout", "csv", "tensorboard"])  
+    # model.set_logger(new_logger)
+    # model.learn(total_timesteps = 350000, log_interval=1)
+    # #test 6 war 0.03 bei allen
+    # model.save("vel_and_gripper_control_1_3")
 
-    #model = DDPG.load("so_langsam_werd_ich_desperate_2", learning_starts = 0, action_noise = action_noise, gradient_steps = 5)
-    #model.set_env(env)
-    #model = PPO("MultiInputPolicy", env=env, batch_size=3,n_epochs=2,n_steps=450)
-    tmp_path = "/tmp/sb3_log/"
-    # set up logger
-    new_logger = configure(tmp_path, ["stdout", "csv", "tensorboard"])  
-    model.set_logger(new_logger)
-    model.learn(total_timesteps = 180000, log_interval=1)
-    #test 6 war 0.03 bei allen
-    model.save("vel_and_gripper_control_0")
-
-    # model = DDPG.load("so_langsam_werd_ich_desperate_2_1")
+    # model = DDPG.load("vel_and_gripper_control_1_3")
     # model.set_env(env)
     # vec_env = model.get_env()
     # obs = vec_env.reset()
     # done = False
-    # reward = 0
-    # succeed = 0
-    # failed = 0
-    # trials = 0
     # while True:
-    #     done = False
-    #     trials = trials + 1
-    #     while not done:
-    #         action, _states = model.predict(obs)
-    #         obs, rewards, done, info = vec_env.step(action)
-    #         reward = reward + rewards
-    #         if reward > 100:
-    #             env.move_gripper(0.8)
-    #             time.sleep(0.4)
-    #             for _ in range(15):
-    #                 lim_act = env.limitedAction([0.0,-0.4,0.0,0.0])
-    #                 env.move_arm(lim_act)
-    #                 time.sleep(0.1)
-    #             if env._ReinforcementLearnerEnvironment__block1_z > 0.05:
-    #                 succeed = succeed + 1
-    #             obs = vec_env.reset()
-    #             reward = 0
-    #             done = True
-    #     print("Success rate: " + str(succeed/trials))
+    #     action, _states = model.predict(obs)
+    #     obs, rewards, done, info = vec_env.step(action)
+
+    model = DDPG.load("vel_and_gripper_control_1_2")
+    model.set_env(env)
+    vec_env = model.get_env()
+    obs = vec_env.reset()
+    done = False
+    reward = 0
+    succeed = 0
+    failed = 0
+    trials = 0
+    while True:
+        done = False
+        trials = trials + 1
+        while not done:
+            action, _states = model.predict(obs)
+            obs, rewards, done, info = vec_env.step(action)
+            reward = reward + rewards
+            if env.reached_grasp_pose(0.02,0.02,0.018) or reward > 40:
+                env.move_gripper(0.8)
+                time.sleep(0.4)
+                for _ in range(15):
+                    lim_act = env.limitedAction([0.0,-0.4,0.0,0.0])
+                    env.move_arm(lim_act)
+                    time.sleep(0.1)
+                if env._ReinforcementLearnerEnvironment__block1_z > 0.05:
+                    succeed = succeed + 1
+                obs = vec_env.reset()
+                reward = 0
+                done = True
+        print("Success rate: " + str(succeed/trials))
 
 
         # if reward > 10:
