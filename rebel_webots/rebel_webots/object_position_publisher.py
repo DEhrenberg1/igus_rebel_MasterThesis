@@ -69,14 +69,14 @@ class ObjectPositionPublisher():
             y_1 = np.random.uniform(-0.25, 0.25)
 
             translation_b1 = self.__block1.getField('translation')
-            translation_b1.setSFVec3f([x_1, y_1, 0.0125])
+            translation_b1.setSFVec3f([x_1, y_1, 0.0275])
             # Always rotate in direction of (0,0,0) for better grasping chances:
             angle = np.arctan((y_1/x_1))
             rotation_b1 = self.__block1.getField('rotation')
             rotation_b1.setSFRotation([0, 0, 1, angle])
 
             translation_b2 = self.__block2.getField('translation')
-            translation_b2.setSFVec3f([0.8, 0.0, 0.0125])
+            translation_b2.setSFVec3f([0.8, 0.0, 0.0275])
             rotation_b2 = self.__block2.getField('rotation')
             rotation_b2.setSFRotation([0, 0, 1, 0])
 
@@ -96,7 +96,7 @@ class ObjectPositionPublisher():
                 hj = self.__gripper.getFromProtoDef('hj' + str(i))
                 hj.setJointPosition(0)
             #self.__robot.getSelf().restartController()
-            #self.__robot.simulationResetPhysics()
+            self.__robot.simulationResetPhysics()
             #self.__robot.simulationReset()
     
     def __compute_gripper_pinch_pos(self):

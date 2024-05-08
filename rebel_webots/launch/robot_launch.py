@@ -66,6 +66,7 @@ def generate_launch_description():
     webots = WebotsLauncher(
         world=os.path.join(package_dir, 'worlds', 'rebel_world.wbt'),
         mode="realtime",
+        gui = True,
         ros2_supervisor=True
     )
     with open(urdf_output_path, 'r') as file:
