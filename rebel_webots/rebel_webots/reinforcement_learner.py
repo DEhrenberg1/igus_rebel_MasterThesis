@@ -249,39 +249,39 @@ def main(args = None):
     rclpy.init(args=args)
     env = ReinforcementLearnerEnvironment()
     Thread(target = updater, args = [env._ReinforcementLearnerEnvironment__node]).start() #Spin Node to update values
-    # # The noise object for DDPG
-    # action_noise = NormalActionNoise(mean=np.zeros(4,), sigma=1.0 * np.ones(4,))
-    # # action_noise = OrnsteinUhlenbeckActionNoise(mean=np.zeros(4,), sigma=1.0 * np.ones(4,), theta = 0.01)
+    # The noise object for DDPG
+    action_noise = NormalActionNoise(mean=np.zeros(4,), sigma=1.0 * np.ones(4,))
+    # action_noise = OrnsteinUhlenbeckActionNoise(mean=np.zeros(4,), sigma=1.0 * np.ones(4,), theta = 0.01)
 
     
-    # model = DDPG("MultiInputPolicy", env, action_noise=action_noise, verbose=1, learning_rate = 0.001, tau = 0.001, learning_starts=50000, gamma = 0.99, batch_size=32  , buffer_size= 300000, gradient_steps= 5, train_freq = (1, "episode"))
-    # #model = DDPG.load("exact_position_learner", learning_starts = 0, action_noise = action_noise, gradient_steps = 5)
-    # model.set_env(env)
-    # #model = PPO("MultiInputPolicy", env=env, batch_size=3,n_epochs=2,n_steps=450)
-    # tmp_path = "/tmp/sb3_log/"
-    # # set up logger
-    # new_logger = configure(tmp_path, ["stdout", "csv", "tensorboard"])  
-    # model.set_logger(new_logger)
-    # model.learn(total_timesteps = 300000, log_interval=1)
-    # #test 6 war 0.03 bei allen
-    # model.save("exact_position_learner_1")
+    model = DDPG("MultiInputPolicy", env, action_noise=action_noise, verbose=1, learning_rate = 0.001, tau = 0.001, learning_starts=50000, gamma = 0.99, batch_size=32  , buffer_size= 300000, gradient_steps= 4, train_freq = (1, "episode"))
+    #model = DDPG.load("exact_position_learner", learning_starts = 0, action_noise = action_noise, gradient_steps = 5)
+    model.set_env(env)
+    #model = PPO("MultiInputPolicy", env=env, batch_size=3,n_epochs=2,n_steps=450)
+    tmp_path = "/tmp/sb3_log/"
+    # set up logger
+    new_logger = configure(tmp_path, ["stdout", "csv", "tensorboard"])  
+    model.set_logger(new_logger)
+    model.learn(total_timesteps = 300000, log_interval=10)
+    #test 6 war 0.03 bei allen
+    model.save("exact_position_learner_gui_true_0")
 
-    # #learn with reduced action noise
-    # for i in range(9):
-    #     action_noise = NormalActionNoise(mean=np.zeros(4,), sigma=(0.9-i/10) * np.ones(4,))
-    #     if i == 0:
-    #         model = DDPG.load("exact_position_learner_1", learning_starts = 0, action_noise=action_noise)
-    #     else:
-    #         del model
-    #         model = DDPG.load("exact_position_learner_1_" + str(i-1), learning_starts = 0, action_noise=action_noise)
-    #     model.set_env(env)
-    #     model.learn(total_timesteps=50000, log_interval= 10)
-    #     model.save("exact_position_learner_1_" + str(i))
+    #learn with reduced action noise
+    for i in range(9):
+        action_noise = NormalActionNoise(mean=np.zeros(4,), sigma=(0.9-i/10) * np.ones(4,))
+        if i == 0:
+            model = DDPG.load("exact_position_learner_gui_true_0", learning_starts = 0, action_noise=action_noise)
+        else:
+            del model
+            model = DDPG.load("exact_position_learner_gui_true_0_" + str(i-1), learning_starts = 0, action_noise=action_noise)
+        model.set_env(env)
+        model.learn(total_timesteps=50000, log_interval= 10)
+        model.save("exact_position_learner_gui_true_0_" + str(i))
     
     # model.learn(total_timesteps=100000, log_interval=1)
     # model.save("exact_position_learner_1_9")
 
-    # model = DDPG.load("exact_position_learner_0_9")
+    # model = DDPG.load("exact_position_learner_gui_false_0_8")
     # model.set_env(env)
     # vec_env = model.get_env()
     # obs = vec_env.reset()
@@ -291,36 +291,36 @@ def main(args = None):
     #     obs, rewards, done, info = vec_env.step(action)
 
 
-    model = DDPG.load("exact_position_learner_0_9")
-    model.set_env(env)
-    vec_env = model.get_env()
-    obs = vec_env.reset()
-    done = False
-    reward = 0
-    succeed = 0
-    failed = 0
-    trials = 0
-    while True:
-        done = False
-        trials = trials + 1
-        while not done:
-            action, _states = model.predict(obs)
-            obs, rewards, done, info = vec_env.step(action)
-            reward = reward + rewards
-            if reward > 10:
-                env.move_gripper(0.8)
-                time.sleep(0.4)
-                for _ in range(15):
-                    lim_act = env.limitedAction([0.0,-0.4,0.0,0.0])
-                    env.move_arm(lim_act)
-                    env.move_gripper(0.8)
-                    time.sleep(0.1)
-                if env._ReinforcementLearnerEnvironment__block1_z > 0.05:
-                    succeed = succeed + 1
-                obs = vec_env.reset()
-                reward = 0
-                done = True
-        print("Success rate: " + str(succeed/trials) + ", Trials: " + str(trials))
+    # model = DDPG.load("exact_position_learner_0_9")
+    # model.set_env(env)
+    # vec_env = model.get_env()
+    # obs = vec_env.reset()
+    # done = False
+    # reward = 0
+    # succeed = 0
+    # failed = 0
+    # trials = 0
+    # while True:
+    #     done = False
+    #     trials = trials + 1
+    #     while not done:
+    #         action, _states = model.predict(obs)
+    #         obs, rewards, done, info = vec_env.step(action)
+    #         reward = reward + rewards
+    #         if reward > 10:
+    #             env.move_gripper(0.8)
+    #             time.sleep(0.4)
+    #             for _ in range(15):
+    #                 lim_act = env.limitedAction([0.0,-0.4,0.0,0.0])
+    #                 env.move_arm(lim_act)
+    #                 env.move_gripper(0.8)
+    #                 time.sleep(0.1)
+    #             if env._ReinforcementLearnerEnvironment__block1_z > 0.05:
+    #                 succeed = succeed + 1
+    #             obs = vec_env.reset()
+    #             reward = 0
+    #             done = True
+    #     print("Success rate: " + str(succeed/trials) + ", Trials: " + str(trials))
 
 
         # if reward > 10:

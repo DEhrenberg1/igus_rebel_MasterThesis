@@ -65,7 +65,7 @@ def generate_launch_description():
     robot_description = urdf_output_path
     webots = WebotsLauncher(
         world=os.path.join(package_dir, 'worlds', 'rebel_world.wbt'),
-        mode="realtime",
+        mode="fast",
         gui = True,
         ros2_supervisor=True
     )
