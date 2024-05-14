@@ -257,26 +257,37 @@ def main(args = None):
     model = DDPG("MultiInputPolicy", env, action_noise=action_noise, verbose=1, learning_rate = 0.001, tau = 0.001, learning_starts=50000, gamma = 0.99, batch_size=32  , buffer_size= 300000, gradient_steps= 4, train_freq = (1, "episode"))
     #model = DDPG.load("exact_position_learner", learning_starts = 0, action_noise = action_noise, gradient_steps = 5)
     model.set_env(env)
-    #model = PPO("MultiInputPolicy", env=env, batch_size=3,n_epochs=2,n_steps=450)
-    tmp_path = "/tmp/sb3_log/"
+    
     # set up logger
-    new_logger = configure(tmp_path, ["stdout", "csv", "tensorboard"])  
+    path = "exact_position_learner_gui_true_0"
+    new_logger = configure(path, ["stdout", "csv", "tensorboard"])  
     model.set_logger(new_logger)
+    # learn
     model.learn(total_timesteps = 300000, log_interval=10)
-    #test 6 war 0.03 bei allen
+    # save
     model.save("exact_position_learner_gui_true_0")
+    model.save_replay_buffer("exact_position_learner_gui_true_0")
 
     #learn with reduced action noise
     for i in range(9):
         action_noise = NormalActionNoise(mean=np.zeros(4,), sigma=(0.9-i/10) * np.ones(4,))
         if i == 0:
+            del model
             model = DDPG.load("exact_position_learner_gui_true_0", learning_starts = 0, action_noise=action_noise)
+            model = model.load_replay_buffer("exact_position_learner_gui_true_0")
         else:
             del model
             model = DDPG.load("exact_position_learner_gui_true_0_" + str(i-1), learning_starts = 0, action_noise=action_noise)
+            model = model.load_replay_buffer("exact_position_learner_gui_true_0_" + str(i-1))
         model.set_env(env)
+        # set up logger
+        name = "exact_position_learner_gui_true_0_" + str(i)
+        path = "name"
+        new_logger = configure(path, ["stdout", "csv", "tensorboard"])  
+        model.set_logger(new_logger)
         model.learn(total_timesteps=50000, log_interval= 10)
-        model.save("exact_position_learner_gui_true_0_" + str(i))
+        model.save(name)
+        model.save_replay_buffer(name)
     
     # model.learn(total_timesteps=100000, log_interval=1)
     # model.save("exact_position_learner_1_9")
