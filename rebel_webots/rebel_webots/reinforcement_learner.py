@@ -8,6 +8,7 @@ from stable_baselines3.common.noise import NormalActionNoise, OrnsteinUhlenbeckA
 #from controller import Supervisor
 from stable_baselines3.common.logger import configure
 import time
+import pandas as pd
 from threading import Thread
 ##Ros2 Message Types
 from sensor_msgs.msg import JointState
@@ -141,7 +142,6 @@ class ReinforcementLearnerEnvironment(gym.Env):
                 lim_act = self.limitedAction([0.0,-0.4,0.0,0.0])
                 for _ in range(2):
                     self.move_arm(lim_act)
-                    self.move_gripper(0.8)
                     time.sleep(0.1)
                 if self.__block1_z > 0.035:
                     reward = 300
@@ -263,73 +263,60 @@ class ReinforcementLearnerEnvironment(gym.Env):
 
         return (check_x and check_y and check_z)
 
-def updater(node):
-    while True:
-        rclpy.spin(node)
-
-def main(args = None):
-    rclpy.init(args=args)
-    env = ReinforcementLearnerEnvironment()
-    Thread(target = updater, args = [env._ReinforcementLearnerEnvironment__node]).start() #Spin Node to update values
+def learn_position(model_name, number_of_models, env):
+    #Number of total_timesteps:
+    high_act_noise_timesteps = 1000
+    reduced_act_noise_timesteps_per_iteration = 1000
+    low_act_noise_timeteps = 1000
     # The noise object for DDPG
-    action_noise = NormalActionNoise(mean=np.zeros(4,), sigma=0.1 * np.ones(4,))
-    # action_noise = OrnsteinUhlenbeckActionNoise(mean=np.zeros(4,), sigma=1.0 * np.ones(4,), theta = 0.01)
+    action_noise = NormalActionNoise(mean=np.zeros(4,), sigma=1.0 * np.ones(4,))
+    model = DDPG("MultiInputPolicy", env, action_noise=action_noise, verbose=1, learning_rate = 0.001, tau = 0.001, learning_starts=50000, gamma = 0.99, batch_size=32  , buffer_size= 300000, gradient_steps= 4, train_freq = (1, "episode"))
+    model.set_env(env)
+    for j in range(number_of_models):
+        # set up logger
+        path = model_name + str(j)
+        new_logger = configure(path, ["stdout", "csv", "tensorboard"])  
+        model.set_logger(new_logger)
+        # learn
+        model.learn(total_timesteps = high_act_noise_timesteps, log_interval=10)
+        # save
+        model.save(model_name + str(j))
+        model.save_replay_buffer(model_name + str(j))
 
-    # model = DDPG.load("exact_position_learner_gui_true_0_8.zip", learning_starts = 0, action_noise = action_noise, gradient_steps = 5, train_freq = (200000,"step"))
-    # model.set_env(env)
-    # model.learn(total_timesteps=1, log_interval=10)
-    # model.save_replay_buffer("instructive_states_3")
+        #Do not train bad models further:
+        df = pd.read_csv(model_name + str(j) +"/progress.csv")
+        reward_column ="rollout/ep_rew_mean"
+        last_20_rewards = df[reward_column].tail(20)
+        average_reward = last_20_rewards.mean()
 
-    # del model
+        if average_reward < 1.7:
+            continue
 
-    # model = DDPG("MultiInputPolicy", env, action_noise=action_noise, verbose=1, learning_rate = 0.001, tau = 0.001, learning_starts=0, gamma = 0.99, batch_size=32  , buffer_size= 300000, gradient_steps= 4, train_freq = (1, "episode"))
-    # #model = DDPG.load("exact_position_learner", learning_starts = 0, action_noise = action_noise, gradient_steps = 5)
-    # model.set_env(env)
-    # model.load_replay_buffer("instructive_states_3")
-    # model_name = "dont_move_block_pos_learner_0"
-    # # set up logger
-    # path = model_name
-    # new_logger = configure(path, ["stdout", "csv", "tensorboard"])  
-    # model.set_logger(new_logger)
-    # # learn
-    # model.train(50000, 32)
-    # model.save("train1")
-    # model.train(50000, 32)
-    # model.save("train2")
-    # model.train(50000, 32)
-    # model.save("train3")
-    # model.train(50000, 32)
-    # model.save("train4")
-    # model.learn(total_timesteps = 50000, log_interval=10)
-    # # save
-    # model.save(model_name)
-    # model.save_replay_buffer(model_name)
+        #Learn with reduced action noise if model is promising:
+        model = None
+        for i in range(9):
+            action_noise = NormalActionNoise(mean=np.zeros(4,), sigma=(0.9-i/10) * np.ones(4,))
+            if i == 0:
+                model = DDPG.load(model_name + str(j) + ".zip", learning_starts = 0, action_noise=action_noise)
+                model.load_replay_buffer(model_name + str(j) + ".pkl")
+            else:
+                model = DDPG.load(model_name + str(j) + "_" + str(i-1)+".zip", learning_starts = 0, action_noise=action_noise)
+                model.load_replay_buffer(model_name + str(j) + "_" + str(i-1) + ".pkl")
+            model.set_env(env)
+            # set up logger
+            name = model_name + str(j) + "_"  + str(i)
+            path = name
+            new_logger = configure(path, ["stdout", "csv", "tensorboard"])  
+            model.set_logger(new_logger)
+            model.learn(total_timesteps=reduced_act_noise_timesteps_per_iteration, log_interval= 10)
+            model.save(name)
+            model.save_replay_buffer(name)
+        
+        model.learn(total_timesteps=low_act_noise_timeteps, log_interval=1)
+        model.save("exact_position_learner_1_9")
 
-    # #learn with reduced action noise
-    # for i in range(9):
-    #     action_noise = NormalActionNoise(mean=np.zeros(4,), sigma=(0.9-i/10) * np.ones(4,))
-    #     if i == 0:
-    #         del model
-    #         model = DDPG.load(model_name, learning_starts = 0, action_noise=action_noise)
-    #         model = model.load_replay_buffer(model_name)
-    #     else:
-    #         del model
-    #         model = DDPG.load(model_name + str(i-1), learning_starts = 0, action_noise=action_noise)
-    #         model = model.load_replay_buffer(model_name + str(i-1))
-    #     model.set_env(env)
-    #     # set up logger
-    #     name = model_name + str(i)
-    #     path = "name"
-    #     new_logger = configure(path, ["stdout", "csv", "tensorboard"])  
-    #     model.set_logger(new_logger)
-    #     model.learn(total_timesteps=50000, log_interval= 10)
-    #     model.save(name)
-    #     model.save_replay_buffer(name)
-    
-    # model.learn(total_timesteps=100000, log_interval=1)
-    # model.save(model_name + str(9))
-
-    model = DDPG.load("train2")
+def test_model(model, env):
+    model = DDPG.load("exact_position_learner_gui_true_0_8_trained_1_learned_gui_false")
     model.set_env(env)
     vec_env = model.get_env()
     obs = vec_env.reset()
@@ -338,48 +325,60 @@ def main(args = None):
         action, _states = model.predict(obs)
         obs, rewards, done, info = vec_env.step(action)
 
+def test_grasp_from_position_learner(model, env):
+    model.set_env(env)
+    vec_env = model.get_env()
+    obs = vec_env.reset()
+    done = False
+    reward = 0
+    succeed = 0
+    failed = 0
+    trials = 0
+    while True:
+        done = False
+        trials = trials + 1
+        while not done:
+            action, _states = model.predict(obs)
+            obs, rewards, done, info = vec_env.step(action)
+            reward = reward + rewards
+            if reward > 10:
+                env.move_gripper(0.8)
+                time.sleep(0.4)
+                for _ in range(15):
+                    lim_act = env.limitedAction([0.0,-0.4,0.0,0.0])
+                    env.move_arm(lim_act)
+                    time.sleep(0.1)
+                if env._ReinforcementLearnerEnvironment__block1_z > 0.05:
+                    succeed = succeed + 1
+                obs = vec_env.reset()
+                reward = 0
+                done = True
+        print("Success rate: " + str(succeed/trials) + ", Trials: " + str(trials))
 
-    # model = DDPG.load("model_name_8")
-    # model.set_env(env)
-    # vec_env = model.get_env()
-    # obs = vec_env.reset()
-    # done = False
-    # reward = 0
-    # succeed = 0
-    # failed = 0
-    # trials = 0
-    # while True:
-    #     done = False
-    #     trials = trials + 1
-    #     while not done:
-    #         action, _states = model.predict(obs)
-    #         obs, rewards, done, info = vec_env.step(action)
-    #         reward = reward + rewards
-    #         if reward > 10:
-    #             env.move_gripper(0.8)
-    #             time.sleep(0.4)
-    #             for _ in range(15):
-    #                 lim_act = env.limitedAction([0.0,-0.4,0.0,0.0])
-    #                 env.move_arm(lim_act)
-    #                 env.move_gripper(0.8)
-    #                 time.sleep(0.1)
-    #             if env._ReinforcementLearnerEnvironment__block1_z > 0.05:
-    #                 succeed = succeed + 1
-    #             obs = vec_env.reset()
-    #             reward = 0
-    #             done = True
-    #     print("Success rate: " + str(succeed/trials) + ", Trials: " + str(trials))
+def updater(node):
+    while True:
+        rclpy.spin(node)
 
+def main(args = None):
+    ## Initialisitation
+    rclpy.init(args=args)
+    env = ReinforcementLearnerEnvironment()
+    Thread(target = updater, args = [env._ReinforcementLearnerEnvironment__node]).start() #Spin Node to update values
 
-        # if reward > 10:
-        #     succeed = succeed + 1
-        # else:
-        #     failed = failed + 1
-        # success_rate = succeed / (succeed + failed)
-        # print("Success rate: " + str(success_rate))
-        # print("Number of tries: " + str((succeed + failed)))
-        # reward = 0
-        # done = False
+    ##Learn position model:
+    modelname = "dont_move_block_"
+    number_of_models = 2
+    learn_position(model_name=modelname, number_of_models=number_of_models, env = env)
+
+    ##Test grasp success on position learner model:
+    # model = DDPG.load("exact_position_learner_gui_true_0_8_trained_1")
+    # test_grasp_from_position_learner(model = model, env = env)
+
+    ##Test model:
+    # model = DDPG.load("exact_position_learner_gui_true_0_8_trained_1_learned_gui_false")
+    # test_model(model = model, env = env)
+    
+
 
 if __name__ == '__main__':
     main()
