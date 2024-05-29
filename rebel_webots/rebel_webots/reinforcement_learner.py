@@ -265,9 +265,9 @@ class ReinforcementLearnerEnvironment(gym.Env):
 
 def learn_position(model_name, number_of_models, env):
     #Number of total_timesteps:
-    high_act_noise_timesteps = 1000
-    reduced_act_noise_timesteps_per_iteration = 1000
-    low_act_noise_timeteps = 1000
+    high_act_noise_timesteps = 300000
+    reduced_act_noise_timesteps_per_iteration = 50000
+    low_act_noise_timeteps = 250000
     # The noise object for DDPG
     action_noise = NormalActionNoise(mean=np.zeros(4,), sigma=1.0 * np.ones(4,))
     model = DDPG("MultiInputPolicy", env, action_noise=action_noise, verbose=1, learning_rate = 0.001, tau = 0.001, learning_starts=50000, gamma = 0.99, batch_size=32  , buffer_size= 300000, gradient_steps= 4, train_freq = (1, "episode"))
@@ -367,7 +367,7 @@ def main(args = None):
 
     ##Learn position model:
     modelname = "dont_move_block_"
-    number_of_models = 2
+    number_of_models = 30
     learn_position(model_name=modelname, number_of_models=number_of_models, env = env)
 
     ##Test grasp success on position learner model:
