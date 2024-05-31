@@ -57,6 +57,7 @@ class ReinforcementLearnerEnvironment(gym.Env):
         self.__distance_reward_active = False #Set this to true to activate a small distance based reward
         self.__dont_move_block_active = False #Set this to true if you want the episode to end when the block was moved
         self.__grasp_at_end_active = False #Set this to true if you want to manually try a grasp at the end of the episode if the arm is in a promising position
+        self.__start_close_to_goal_active = False #Set this to true to reset so long until the gripper starts close to the object
 
 
         ## OpenAI Stuff
@@ -164,10 +165,7 @@ class ReinforcementLearnerEnvironment(gym.Env):
         info = {}
         return observation, reward, terminated, truncated, info
     
-    def reset (self, seed=None, options=None):
-        super().reset(seed=seed)
-        print("simulation will be reset")
-
+    def simulation_reset (self):
         self.__arm_positions = [0.0,0.0,0.0,0.0,0.0,0.0]
         self.__arm_velocities = [0.0,0.0,0.0,0.0,0.0,0.0]
         old_b1x = self.__block1_x
@@ -195,6 +193,18 @@ class ReinforcementLearnerEnvironment(gym.Env):
             pass
         
         time.sleep(0.1) #Wait until simulation is stable
+    
+    def reset (self, seed=None, options=None):
+        super().reset(seed=seed)
+        print("simulation will be reset")
+        self.simulation_reset()
+
+        if self.__start_close_to_goal_active:
+            while(self.__distance_gripper_b1 > 0.35):
+                print("reset cause too far away")
+                self.simulation_reset()
+
+
         self.__block1_initial = [self.__block1_x, self.__block1_y, self.__block1_z]
         pos_block1 = [self.__block1_x, self.__block1_y, self.__block1_z]
         pos_gripper = [self.__gripper_x, self.__gripper_y, self.__gripper_z]
@@ -376,6 +386,7 @@ def main(args = None):
     env = ReinforcementLearnerEnvironment()
     Thread(target = updater, args = [env._ReinforcementLearnerEnvironment__node]).start() #Spin Node to update values
     env._ReinforcementLearnerEnvironment__distance_reward_active = True
+    env._ReinforcementLearnerEnvironment__start_close_to_goal_active = True
     ##Learn position model:
     modelname = "distance_reward_active_"
     number_of_models = 2
