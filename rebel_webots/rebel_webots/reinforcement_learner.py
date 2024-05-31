@@ -53,6 +53,12 @@ class ReinforcementLearnerEnvironment(gym.Env):
         self.__start_time = 0.0
         self.__reached_grasp_pos = False
         self.__grasped = False
+
+        self.__distance_reward_active = False #Set this to true to activate a small distance based reward
+        self.__dont_move_block_active = False #Set this to true if you want the episode to end when the block was moved
+        self.__grasp_at_end_active = False #Set this to true if you want to manually try a grasp at the end of the episode if the arm is in a promising position
+
+
         ## OpenAI Stuff
         self.action_space = spaces.Box(low = -0.4, high = 0.4, shape = (4,), dtype=np.float64) #Velocity controller of all six joints
         self.observation_space = spaces.Dict(
@@ -124,29 +130,34 @@ class ReinforcementLearnerEnvironment(gym.Env):
         if self.reached_grasp_pose(0.02,0.02,0.02):
             reward = reward + 10
             print("Hurra!")
-        
+
+        if self.__distance_reward_active:
+            if self.__distance_gripper_b1 < 1:
+                distance_reward = 10 ** (-1 * int(10*self.__distance_gripper_b1))
+                reward = reward + distance_reward
         
         terminated = False
         truncated = True if (self.__current_steps>=self.__max_steps) else False
         truncated = True if (self.__gripper_z <= 0.004) else truncated
         
         #reset if block was moved too much
-        for i in range(3):
-            if abs(pos_block1[i] - self.__block1_initial[i]) > 0.005:
-                truncated = True
-
-        if not truncated:
-            if self.reached_grasp_pose(0.01,0.01,0.02):
-                self.move_gripper(0.8)
-                time.sleep(0.4)
-                lim_act = self.limitedAction([0.0,-0.4,0.0,0.0])
-                for _ in range(2):
-                    self.move_arm(lim_act)
-                    time.sleep(0.1)
-                if self.__block1_z > 0.035:
-                    reward = 300
-                    print("Lifted!")
-                terminated = True
+        if self.__dont_move_block_active:
+            for i in range(3):
+                if abs(pos_block1[i] - self.__block1_initial[i]) > 0.005:
+                    truncated = True
+        if self.__grasp_at_end_active:
+            if not truncated:
+                if self.reached_grasp_pose(0.01,0.01,0.02):
+                    self.move_gripper(0.8)
+                    time.sleep(0.4)
+                    lim_act = self.limitedAction([0.0,-0.4,0.0,0.0])
+                    for _ in range(2):
+                        self.move_arm(lim_act)
+                        time.sleep(0.1)
+                    if self.__block1_z > 0.035:
+                        reward = 300
+                        print("Lifted!")
+                    terminated = True
 
         if truncated:
             print(self.__current_steps)
@@ -278,7 +289,7 @@ def learn_position(model_name, number_of_models, env):
         new_logger = configure(path, ["stdout", "csv", "tensorboard"])  
         model.set_logger(new_logger)
         # learn
-        model.learn(total_timesteps = high_act_noise_timesteps, log_interval=10)
+        model.learn(total_timesteps = high_act_noise_timesteps, log_interval=1)
         # save
         model.save(model_name + str(j))
         model.save_replay_buffer(model_name + str(j))
@@ -364,10 +375,10 @@ def main(args = None):
     rclpy.init(args=args)
     env = ReinforcementLearnerEnvironment()
     Thread(target = updater, args = [env._ReinforcementLearnerEnvironment__node]).start() #Spin Node to update values
-
+    env._ReinforcementLearnerEnvironment__distance_reward_active = True
     ##Learn position model:
-    modelname = "dont_move_block_"
-    number_of_models = 30
+    modelname = "distance_reward_active_"
+    number_of_models = 2
     learn_position(model_name=modelname, number_of_models=number_of_models, env = env)
 
     ##Test grasp success on position learner model:
