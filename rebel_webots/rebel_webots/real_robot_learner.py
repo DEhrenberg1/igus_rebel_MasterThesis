@@ -31,9 +31,12 @@ class ReinforcementLearnerEnvironment(gym.Env):
         ## Observation variables
         self.__arm_positions = [0.0,0.0,0.0,0.0,0.0,0.0]
         self.__arm_velocities = [0.0,0.0,0.0,0.0,0.0,0.0]
-        self.__block1_x = 0.45
-        self.__block1_y = 0.05
-        self.__block1_z = 0.0275
+        # self.__block1_x = 0.45
+        # self.__block1_y = 0.05
+        # self.__block1_z = 0.0275
+        self.__block1_x = 0.0
+        self.__block1_y = 0.0
+        self.__block1_z = 0.0
         self.__block1_initial = [self.__block1_x, self.__block1_y, self.__block1_z]
         self.__gripper_x = 0.0
         self.__gripper_y = 0.0
@@ -94,7 +97,7 @@ class ReinforcementLearnerEnvironment(gym.Env):
         rel_arm_pos = [self.__arm_positions[0],self.__arm_positions[1],self.__arm_positions[2],self.__arm_positions[4]]
         rel_arm_vel = [self.__arm_velocities[0], self.__arm_velocities[1], self.__arm_velocities[2], self.__arm_velocities[4]]
         self.__distance_gripper_b1 = self.compute_distance_gripper_b1()
-
+        
         #print(pos_block1)
         print (self.__distance_gripper_b1)
         observation = {"position_block_1": pos_block1, "position_gripper": pos_gripper, "rebel_arm_position": rel_arm_pos, "rebel_arm_velocity": rel_arm_vel, "distance_to_block": self.__distance_gripper_b1}
@@ -112,7 +115,7 @@ class ReinforcementLearnerEnvironment(gym.Env):
         
         terminated = False
         truncated = True if (self.__current_steps>=self.__max_steps) else False
-        truncated = True if (self.__gripper_z <= 0.00) else truncated
+        truncated = True if (self.__gripper_z <= 0.03) else truncated
         
         #reset if block was moved too much
         if self.__dont_move_block_active:
@@ -183,10 +186,9 @@ class ReinforcementLearnerEnvironment(gym.Env):
     ## The Functions below are used for ROS2-Communication:
     def __joint_state_callback(self, joint_state):
         arm_name = joint_state.name
-        self.__arm_positions = []
-        self.__arm_velocities = []
-
         if len(joint_state.velocity) == 6 and len(joint_state.position) == 6:
+            self.__arm_positions = []
+            self.__arm_velocities = []
             for i in range(6):
                 ind = arm_name.index("joint" + str(i+1))
                 self.__arm_positions.append(joint_state.position[ind])
