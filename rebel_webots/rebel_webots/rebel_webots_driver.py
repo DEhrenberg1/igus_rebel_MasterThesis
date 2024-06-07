@@ -44,7 +44,7 @@ class RebelWebotsDriver():
         if self.__velocities == [0.0,0.0,0.0,0.0,0.0,0.0]:
             self.__set_vel()
         self.__count = self.__count + 1
-        if self.__count % 6 == 0:
+        if self.__count % 10 == 0:
             self.__velocities = [0.0,0.0,0.0,0.0,0.0,0.0]
 
         
