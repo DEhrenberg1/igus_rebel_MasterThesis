@@ -359,7 +359,8 @@ def main(args = None):
     # model = DDPG.load("exact_position_learner_gui_true_0_8_trained_1_learned_gui_false")
     # test_model(model = model, env = env)
 
-    model = DDPG.load("exact_position_learner_gui_true_0_8.zip")
+    #model = DDPG.load("exact_position_learner_gui_true_0_8.zip")
+    model = DDPG.load("minimize_distance_1_8.zip")
     model.set_env(env)
     vec_env = model.get_env()
     obs = vec_env.reset()

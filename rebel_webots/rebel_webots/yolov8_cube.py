@@ -122,8 +122,11 @@ while True:
 
 
             # Extract the depth values within the bounding box
-            depth_values = transformed_depth_image[(y_lower_left+5):(y_upper_right-5), (x_lower_left+5):(x_upper_right-5)]
-
+            height = y_upper_right - y_lower_left
+            if class_label == 'gripper':
+                depth_values = transformed_depth_image[(y_lower_left+int(height/3)+5):(y_upper_right-5), (x_lower_left+5):(x_upper_right-5)]
+            else:
+                depth_values = transformed_depth_image[(y_lower_left+5):(y_upper_right-5), (x_lower_left+5):(x_upper_right-5)]
             depth_values = depth_values[depth_values>0]
 
             # Compute the average depth
@@ -143,19 +146,22 @@ while True:
 
             #add offset per "item"
             if class_label == 'gripper':
-                y_irl = y_irl - 60 #should be -30, for safety reasons -60 ##Should not get under 20
+                y_irl = y_irl - 30 #should be -30, for safety reasons -60 ##Should not get under 20
+                z_irl = z_irl - 10
             if class_label == 'rubiks-cube':
                 y_irl = y_irl + 20
-                z_irl = z_irl - 20
+                z_irl = z_irl - 30
 
             #publish coordinates on ROS2 topic:
             if class_label == 'gripper':
-                publish_position([z_irl/1000, x_irl/1000, y_irl/1000], gripper_publisher)
+                #publish_position([z_irl/1000, x_irl/1000, y_irl/1000], gripper_publisher)
+                pass
             if class_label == 'rubiks-cube':
                 publish_position([z_irl/1000, x_irl/1000, y_irl/1000], cube_publisher)
+                pass
 
             #annotate frame with coordinates
-            coordinate_string = "(" + str(int(x_irl)) + ", " + str(int(y_irl)) + ", " + str(int(z_irl)) + ")"
+            coordinate_string = "(" + str(int(z_irl)) + ", " + str(int(x_irl)) + ", " + str(int(y_irl)) + ")"
             annotated_frame = cv2.putText(annotated_frame, coordinate_string, (x_lower_left,y_lower_left-50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 2)
 
     else:
