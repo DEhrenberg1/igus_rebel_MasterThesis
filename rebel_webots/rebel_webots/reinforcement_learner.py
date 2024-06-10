@@ -105,7 +105,7 @@ class ReinforcementLearnerEnvironment(gym.Env):
         self.__current_steps += 1
         if self.__current_steps == 1:
             self.__start_time = self.__sim_time
-        wait_time = 4
+        wait_time = 8
         if self.__distance_gripper_b1 <= 0.3:
             wait_time = 4
         if self.__distance_gripper_b1 <= 0.1:
@@ -134,10 +134,12 @@ class ReinforcementLearnerEnvironment(gym.Env):
         #observation = {"distance_to_block": self.__distance_gripper_b1}
 
         reward = 0
-
-        if self.reached_grasp_pose(0.01,0.01,0.01):
+        if self.reached_grasp_pose(0.02,0.02,0.02):
             reward = reward + 10
             print("Hurra!")
+        if self.reached_grasp_pose(0.01,0.01,0.01):
+            reward = reward + 15
+            print("Double Hurra!")
 
         if self.__distance_reward_active:
             if self.__distance_gripper_b1 < 1:
@@ -146,6 +148,7 @@ class ReinforcementLearnerEnvironment(gym.Env):
         
         terminated = False
         truncated = True if (self.__current_steps>=self.__max_steps) else False
+        reward = reward - 0.5 if (self.__gripper_z <= 0.004) else reward
         truncated = True if (self.__gripper_z <= 0.004) else truncated
         
         #reset if block was moved too much
@@ -270,7 +273,8 @@ class ReinforcementLearnerEnvironment(gym.Env):
     
     def move_arm(self, velocities):
         msg = Float64MultiArray()
-        msg.data = velocities
+        scaled_vel = [x*0.5 for x in velocities]
+        msg.data = scaled_vel
         self.__arm_publisher.publish(msg)
     
     def move_gripper(self, pos):
@@ -293,12 +297,12 @@ class ReinforcementLearnerEnvironment(gym.Env):
 
 def learn_position(model_name, number_of_models, env):
     #Number of total_timesteps:
-    high_act_noise_timesteps = 100000
-    reduced_act_noise_timesteps_per_iteration = 50000
-    low_act_noise_timeteps = 250000
+    high_act_noise_timesteps = 20000
+    reduced_act_noise_timesteps_per_iteration = 20000
+    low_act_noise_timeteps = 100000
     # The noise object for DDPG
-    action_noise = NormalActionNoise(mean=np.zeros(4,), sigma=1.0 * np.ones(4,))
-    model = DDPG("MultiInputPolicy", env, action_noise=action_noise, verbose=1, learning_rate = 0.001, tau = 0.001, learning_starts=0, gamma = 0.99, batch_size=32  , buffer_size= 300000, gradient_steps= 4, train_freq = (1, "episode"))
+    action_noise = NormalActionNoise(mean=np.zeros(4,), sigma=0.5 * np.ones(4,))
+    model = DDPG("MultiInputPolicy", env, action_noise=action_noise, verbose=1, learning_rate = 0.001, tau = 0.001, learning_starts=10000, gamma = 0.99, batch_size=32  , buffer_size= 300000, gradient_steps= 4, train_freq = (1, "episode"))
     model.set_env(env)
     for j in range(number_of_models):
         # set up logger
@@ -323,7 +327,7 @@ def learn_position(model_name, number_of_models, env):
         #Learn with reduced action noise if model is promising:
         model = None
         for i in range(9):
-            action_noise = NormalActionNoise(mean=np.zeros(4,), sigma=(0.9-i/10) * np.ones(4,))
+            action_noise = NormalActionNoise(mean=np.zeros(4,), sigma= 0.25 * (0.9-i/10) * np.ones(4,))
             if i == 0:
                 model = DDPG.load(model_name + str(j) + ".zip", learning_starts = 0, action_noise=action_noise)
                 model.load_replay_buffer(model_name + str(j) + ".pkl")
@@ -344,7 +348,7 @@ def learn_position(model_name, number_of_models, env):
         model.save(model_name + "final")
 
 def test_model(model, env):
-    model = DDPG.load("exact_position_learner_gui_true_0_8_trained_1_learned_gui_false")
+    #model = DDPG.load("exact_position_learner_gui_true_0_8_trained_1_learned_gui_false")
     model.set_env(env)
     vec_env = model.get_env()
     obs = vec_env.reset()
@@ -398,17 +402,17 @@ def main(args = None):
     env._ReinforcementLearnerEnvironment__grasp_at_end_active = False 
 
     ##Learn position model:
-    modelname = "test 1cm box"
-    number_of_models = 2
-    learn_position(model_name=modelname, number_of_models=number_of_models, env = env)
+    # modelname = "minimize_distance_"
+    # number_of_models = 2
+    # learn_position(model_name=modelname, number_of_models=number_of_models, env = env)
 
     ##Test grasp success on position learner model:
     # model = DDPG.load("exact_position_learner_gui_true_0_8_trained_1")
     # test_grasp_from_position_learner(model = model, env = env)
 
     #Test model:
-    # model = DDPG.load("exact_position_learner_gui_true_0_8")
-    # test_model(model = model, env = env)
+    model = DDPG.load("minimize_distance_1_8.zip")
+    test_model(model = model, env = env)
     
 
 
