@@ -148,8 +148,8 @@ class ReinforcementLearnerEnvironment(gym.Env):
         
         terminated = False
         truncated = True if (self.__current_steps>=self.__max_steps) else False
-        reward = reward - 0.5 if (self.__gripper_z <= 0.004) else reward
-        truncated = True if (self.__gripper_z <= 0.004) else truncated
+        reward = reward - 0.5 if (self.__gripper_z <= 0.03) else reward
+        truncated = True if (self.__gripper_z <= 0.03) else truncated
         
         #reset if block was moved too much
         if self.__dont_move_block_active:
@@ -402,17 +402,17 @@ def main(args = None):
     env._ReinforcementLearnerEnvironment__grasp_at_end_active = False 
 
     ##Learn position model:
-    # modelname = "minimize_distance_"
-    # number_of_models = 2
-    # learn_position(model_name=modelname, number_of_models=number_of_models, env = env)
+    modelname = "minimize_distance_elevated_"
+    number_of_models = 2
+    learn_position(model_name=modelname, number_of_models=number_of_models, env = env)
 
     ##Test grasp success on position learner model:
     # model = DDPG.load("exact_position_learner_gui_true_0_8_trained_1")
     # test_grasp_from_position_learner(model = model, env = env)
 
     #Test model:
-    model = DDPG.load("minimize_distance_1_8.zip")
-    test_model(model = model, env = env)
+    # model = DDPG.load("minimize_distance_1_8.zip")
+    # test_model(model = model, env = env)
     
 
 

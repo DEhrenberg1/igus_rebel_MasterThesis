@@ -43,7 +43,7 @@ class ObjectPositionPublisher():
         msg = Point()
         msg.x = position[0]
         msg.y = position[1]
-        msg.z = position[2]
+        msg.z = position[2] - 0.1
         publisher.publish(msg)
     
     def __compute_distance(self):
@@ -69,7 +69,7 @@ class ObjectPositionPublisher():
             y_1 = np.random.uniform(-0.25, 0.25)
 
             translation_b1 = self.__block1.getField('translation')
-            translation_b1.setSFVec3f([x_1, y_1, 0.0275])
+            translation_b1.setSFVec3f([x_1, y_1, (0.0275 + 0.1)])
             # Always rotate in direction of (0,0,0) for better grasping chances:
             angle = np.arctan((y_1/x_1))
             rotation_b1 = self.__block1.getField('rotation')
@@ -105,12 +105,14 @@ class ObjectPositionPublisher():
         pos = self.__gripper.getPosition()
         orientation = self.__gripper.getOrientation()
         orientation = np.reshape(orientation, (3,3))
-        offset = np.array([0,0,0.15]) #pinch position is roughly 15cm from gripper pos in z-direction in gripper coordinate system
+        offset = np.array([0,0,0.085]) #pinch position is roughly 15cm from gripper pos in z-direction in gripper coordinate system
         self.__pinch_pos = np.matmul(orientation,offset) + pos
 
     def step(self):
         rclpy.spin_once(self.__node, timeout_sec=0)
-        self.publish_position(self.__block1.getPosition(), self.__pub1)
+        pos = self.__block1.getPosition()
+        pos[2] = pos[2] + 0.0275
+        self.publish_position(pos, self.__pub1)
         self.publish_position(self.__block2.getPosition(), self.__pub2)
         self.__compute_gripper_pinch_pos()
         self.publish_position(self.__pinch_pos, self.__pub3)

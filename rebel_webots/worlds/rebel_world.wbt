@@ -70,6 +70,7 @@ DEF block2_solid Solid {
   }
 }
 DEF igus_rebel IgusRebel {
+  translation 0.0 0.0 0.14
   name "igus_rebel"
   controller "<extern>"
   supervisor TRUE
