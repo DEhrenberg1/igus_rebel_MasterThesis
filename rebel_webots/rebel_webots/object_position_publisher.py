@@ -43,7 +43,7 @@ class ObjectPositionPublisher():
         msg = Point()
         msg.x = position[0]
         msg.y = position[1]
-        msg.z = position[2]
+        msg.z = position[2] - 0.1
         publisher.publish(msg)
     
     def __compute_distance(self):
@@ -105,7 +105,7 @@ class ObjectPositionPublisher():
         pos = self.__gripper.getPosition()
         orientation = self.__gripper.getOrientation()
         orientation = np.reshape(orientation, (3,3))
-        offset = np.array([0,0,0.15]) #pinch position is roughly 15cm from gripper pos in z-direction in gripper coordinate system
+        offset = np.array([0,0,0.085]) #pinch position is roughly 15cm from gripper pos in z-direction in gripper coordinate system
         self.__pinch_pos = np.matmul(orientation,offset) + pos
 
     def step(self):

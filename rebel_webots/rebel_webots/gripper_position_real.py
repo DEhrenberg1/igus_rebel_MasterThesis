@@ -32,7 +32,7 @@ class GripperPositionReal():
         rclpy.init(args=None)
         self.__node = rclpy.create_node('igus_webots_driver')
         self.__pub = self.__node.create_publisher(Point, '/real/position/gripper', 10)
-        self.__node.create_subscription(JointState, '/real/joint_states', self.joint_state_callback, 1)
+        self.__node.create_subscription(JointState, '/real/filtered_joint_states', self.joint_state_callback, 1)
         
 
     def publish_position(self, position, publisher):
@@ -64,10 +64,10 @@ class GripperPositionReal():
         ##This function computes roughly the pinch position of the fingers (i.e. the position the fingers would meet when closing)
         ##This is based on the position and orientation of the gripper (see webots documentation) and gripper specification
         pos = self.__gripper.getPosition()
-        pos = (pos[0],pos[1],pos[2] - 0.055) #Offset in real world
+        pos = (pos[0],pos[1],pos[2] - 0.1) #Offset in real world
         orientation = self.__gripper.getOrientation()
         orientation = np.reshape(orientation, (3,3))
-        offset = np.array([0,0,0.07]) #pinch position is roughly 15cm from gripper pos in z-direction in gripper coordinate system
+        offset = np.array([0,0,0.15]) #pinch position is roughly 15cm from gripper pos in z-direction in gripper coordinate system
         self.__pinch_pos = np.matmul(orientation,offset) + pos
 
     def step(self):

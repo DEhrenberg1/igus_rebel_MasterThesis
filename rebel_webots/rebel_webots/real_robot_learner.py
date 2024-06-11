@@ -31,12 +31,12 @@ class ReinforcementLearnerEnvironment(gym.Env):
         ## Observation variables
         self.__arm_positions = [0.0,0.0,0.0,0.0,0.0,0.0]
         self.__arm_velocities = [0.0,0.0,0.0,0.0,0.0,0.0]
-        # self.__block1_x = 0.45
-        # self.__block1_y = 0.05
-        # self.__block1_z = 0.0275
-        self.__block1_x = 0.0
-        self.__block1_y = 0.0
-        self.__block1_z = 0.0
+        self.__block1_x = 0.51
+        self.__block1_y = 0.03
+        self.__block1_z = 0.0275
+        # self.__block1_x = 0.0
+        # self.__block1_y = 0.0
+        # self.__block1_z = 0.0
         self.__block1_initial = [self.__block1_x, self.__block1_y, self.__block1_z]
         self.__gripper_x = 0.0
         self.__gripper_y = 0.0
@@ -63,7 +63,7 @@ class ReinforcementLearnerEnvironment(gym.Env):
         self.__current_steps = 0
         ## ROS2 Stuff
         self.__node = rclpy.create_node('reinforcement_learner')
-        self.__node.create_subscription(JointState, '/real/joint_states', self.__joint_state_callback, 1)
+        self.__node.create_subscription(JointState, '/real/filtered_joint_states', self.__joint_state_callback, 1)
         self.__node.create_subscription(Point, '/real/position/block1', self.__pos_block1_callback, 1)
         self.__node.create_subscription(Point, '/real/position/gripper', self.__pos_gripper_callback, 1)
         self.__node.create_subscription(Point, '/real/distance', self.__distance_callback, 1)
@@ -100,6 +100,8 @@ class ReinforcementLearnerEnvironment(gym.Env):
         
         #print(pos_block1)
         print (self.__distance_gripper_b1)
+        print(pos_block1)
+        print(pos_gripper)
         observation = {"position_block_1": pos_block1, "position_gripper": pos_gripper, "rebel_arm_position": rel_arm_pos, "rebel_arm_velocity": rel_arm_vel, "distance_to_block": self.__distance_gripper_b1}
 
         reward = 0
