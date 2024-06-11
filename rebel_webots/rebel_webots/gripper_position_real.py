@@ -29,9 +29,15 @@ class GripperPositionReal():
         self.__pinch_pos = [0.0, 0.0, 0.0]
         self.arm_positions = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
         self.arm_velocities = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        self.__block1 = self.__robot.getFromDef('block1_solid')
+        self.__block2 = self.__robot.getFromDef('block2_solid')
+        self.__distance_gripper_b1 = 0.0
+        self.__distance_gripper_b2 = 0.0
+        self.__distance_b1_b2 = 0.0
         rclpy.init(args=None)
         self.__node = rclpy.create_node('igus_webots_driver')
         self.__pub = self.__node.create_publisher(Point, '/real/position/gripper', 10)
+        self.__pub2 = self.__node.create_publisher(Point, 'real/position/tool', 10)
         self.__node.create_subscription(JointState, '/real/filtered_joint_states', self.joint_state_callback, 1)
         
 
@@ -39,8 +45,9 @@ class GripperPositionReal():
         msg = Point()
         msg.x = position[0]
         msg.y = position[1]
-        msg.z = position[2]
+        msg.z = position[2] - 0.11 #Offset
         publisher.publish(msg)
+    
     
     def joint_state_callback(self, joint_state):
         arm_name = joint_state.name
@@ -64,7 +71,7 @@ class GripperPositionReal():
         ##This function computes roughly the pinch position of the fingers (i.e. the position the fingers would meet when closing)
         ##This is based on the position and orientation of the gripper (see webots documentation) and gripper specification
         pos = self.__gripper.getPosition()
-        pos = (pos[0],pos[1],pos[2] - 0.1) #Offset in real world
+        pos = (pos[0],pos[1],pos[2]) #Offset in real world
         orientation = self.__gripper.getOrientation()
         orientation = np.reshape(orientation, (3,3))
         offset = np.array([0,0,0.15]) #pinch position is roughly 15cm from gripper pos in z-direction in gripper coordinate system
@@ -74,7 +81,7 @@ class GripperPositionReal():
         rclpy.spin_once(self.__node, timeout_sec=0)
         self.__compute_gripper_pinch_pos()
         self.publish_position(self.__pinch_pos, self.__pub)
-        # self.publish_position(self.__gripper.getPosition(), self.__pub)
+        self.publish_position(self.__gripper.getPosition(), self.__pub2)
 
 def main(args=None):
     rclpy.init(args=args)

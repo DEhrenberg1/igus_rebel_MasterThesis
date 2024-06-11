@@ -31,8 +31,8 @@ class ReinforcementLearnerEnvironment(gym.Env):
         ## Observation variables
         self.__arm_positions = [0.0,0.0,0.0,0.0,0.0,0.0]
         self.__arm_velocities = [0.0,0.0,0.0,0.0,0.0,0.0]
-        self.__block1_x = 0.51
-        self.__block1_y = 0.03
+        self.__block1_x = 0.44
+        self.__block1_y = -0.13
         self.__block1_z = 0.0275
         # self.__block1_x = 0.0
         # self.__block1_y = 0.0
@@ -41,6 +41,7 @@ class ReinforcementLearnerEnvironment(gym.Env):
         self.__gripper_x = 0.0
         self.__gripper_y = 0.0
         self.__gripper_z = 0.0
+        self.__tool = [0.0, 0.0, 0.0]
         self.__distance_gripper_b1 = 2.0
 
         self.__distance_reward_active = False #Set this to true to activate a small distance based reward
@@ -66,7 +67,8 @@ class ReinforcementLearnerEnvironment(gym.Env):
         self.__node.create_subscription(JointState, '/real/filtered_joint_states', self.__joint_state_callback, 1)
         self.__node.create_subscription(Point, '/real/position/block1', self.__pos_block1_callback, 1)
         self.__node.create_subscription(Point, '/real/position/gripper', self.__pos_gripper_callback, 1)
-        self.__node.create_subscription(Point, '/real/distance', self.__distance_callback, 1)
+        self.__node.create_subscription(Point, '/real/position/tool', self.__pos_tool_callback, 1)
+        #self.__node.create_subscription(Point, '/real/distance', self.__distance_callback, 1)
         self.__arm_publisher = self.__node.create_publisher(JointTrajectory, '/real/joint_trajectory_controller/joint_trajectory', 10)
         #self.__gripper_publisher = self.__node.create_publisher(JointTrajectory, '/gripper_driver/command', 10)
     
@@ -206,10 +208,13 @@ class ReinforcementLearnerEnvironment(gym.Env):
         self.__gripper_y = pos.y
         self.__gripper_z = pos.z
 
-    def __distance_callback(self, pos):
-        self.__distance_b1_b2 = pos.x
-        self.__distance_gripper_b1 = pos.y
-        self.__distance_gripper_b2 = pos.z
+    def __pos_tool_callback(self, pos):
+        self.__tool = [pos.x,pos.y,pos.z]
+
+    # def __distance_callback(self, pos):
+    #     self.__distance_b1_b2 = pos.x
+    #     self.__distance_gripper_b1 = pos.y
+    #     self.__distance_gripper_b2 = pos.z
     
     def move_arm(self, velocities):
         scaled_vel = [x * 12.5 for x in velocities] #Scale up velocity for real robot
@@ -232,7 +237,7 @@ class ReinforcementLearnerEnvironment(gym.Env):
     ##Function to compute the distance:
 
     def compute_distance_gripper_b1(self):
-        dist = math.sqrt((self.__gripper_x - self.__block1_x)**2 + (self.__gripper_y - self.__block1_y)**2 + (self.__gripper_z - self.__block1_z)**2)
+        dist = math.sqrt((self.__tool[0] - self.__block1_x)**2 + (self.__tool[1] - self.__block1_y)**2 + (self.__tool[2] - self.__block1_z)**2)
         return dist
 
     ##Functions used to compute the reward from the observation:
