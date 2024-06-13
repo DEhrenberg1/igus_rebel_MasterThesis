@@ -122,47 +122,51 @@ while True:
 
 
             # Extract the depth values within the bounding box
-            height = y_upper_right - y_lower_left
-            if class_label == 'gripper':
-                depth_values = transformed_depth_image[(y_lower_left+int(height/3)+5):(y_upper_right-5), (x_lower_left+5):(x_upper_right-5)]
-            else:
-                depth_values = transformed_depth_image[(y_lower_left+5):(y_upper_right-5), (x_lower_left+5):(x_upper_right-5)]
-            depth_values = depth_values[depth_values>0]
+            # height = y_upper_right - y_lower_left
+            # if class_label == 'gripper':
+            #     depth_values = transformed_depth_image[(y_lower_left+int(height/3)+5):(y_upper_right-5), (x_lower_left+5):(x_upper_right-5)]
+            # else:
+            #     depth_values = transformed_depth_image[(y_lower_left+5):(y_upper_right-5), (x_lower_left+5):(x_upper_right-5)]
+            # depth_values = depth_values[depth_values>0]
 
-            # Compute the average depth
-            average_depth = np.mean(depth_values)
+            # # Compute the average depth
+            # average_depth = np.mean(depth_values)
 
             #Compute depth
-            depth = transformed_depth_image[y_center][x_center]
-            #Compute X,Y,Z components 
-            x_cam = (average_depth*(x_center - calibration.color_params.cx))/calibration.color_params.fx
-            y_cam = (average_depth*(y_center - calibration.color_params.cy))/calibration.color_params.fy
-            z_cam = average_depth
+            depth_values = transformed_depth_image[(y_center-5):(y_center+5), (x_center-5):(x_center+5)]
+            depth_values = depth_values[depth_values>0] #Get wrong depth values (due to transformation) out
+            if len(depth_values) > 0: #check that there were non-zero values.
+                depth = np.mean(depth_values)
+                #depth = transformed_depth_image[y_center][x_center]
+                #Compute X,Y,Z components 
+                x_cam = (depth*(x_center - calibration.color_params.cx))/calibration.color_params.fx
+                y_cam = (depth*(y_center - calibration.color_params.cy))/calibration.color_params.fy
+                z_cam = depth
 
-            #Transpose in coordinate system of igus rebel arm (as in simulation)
-            x_irl = (-1) * x_cam
-            y_irl = ((-1) * y_cam) + 54 
-            z_irl = ((-1) * z_cam) + 1030
+                #Transpose in coordinate system of igus rebel arm (as in simulation)
+                x_irl = (-1) * x_cam
+                y_irl = ((-1) * y_cam) + 54 
+                z_irl = ((-1) * z_cam) + 1043
 
-            #add offset per "item"
-            if class_label == 'gripper':
-                y_irl = y_irl - 30 #should be -30, for safety reasons -60 ##Should not get under 20
-                z_irl = z_irl - 10
-            if class_label == 'rubiks-cube':
-                y_irl = y_irl + 20
-                z_irl = z_irl - 30
+                #add offset per "item"
+                if class_label == 'gripper':
+                    y_irl = y_irl - 30 #should be -30, for safety reasons -60 ##Should not get under 20
+                    z_irl = z_irl - 10
+                if class_label == 'rubiks-cube':
+                    y_irl = y_irl + 20
+                    z_irl = z_irl - 30
 
-            #publish coordinates on ROS2 topic:
-            if class_label == 'gripper':
-                #publish_position([z_irl/1000, x_irl/1000, y_irl/1000], gripper_publisher)
-                pass
-            if class_label == 'rubiks-cube':
-                publish_position([z_irl/1000, x_irl/1000, y_irl/1000], cube_publisher)
-                pass
+                #publish coordinates on ROS2 topic:
+                if class_label == 'gripper':
+                    #publish_position([z_irl/1000, x_irl/1000, y_irl/1000], gripper_publisher)
+                    pass
+                if class_label == 'rubiks-cube':
+                    publish_position([z_irl/1000, x_irl/1000, y_irl/1000], cube_publisher)
+                    pass
 
-            #annotate frame with coordinates
-            coordinate_string = "(" + str(int(z_irl)) + ", " + str(int(x_irl)) + ", " + str(int(y_irl)) + ")"
-            annotated_frame = cv2.putText(annotated_frame, coordinate_string, (x_lower_left,y_lower_left-50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 2)
+                #annotate frame with coordinates
+                coordinate_string = "(" + str(int(z_irl)) + ", " + str(int(x_irl)) + ", " + str(int(y_irl)) + ")"
+                annotated_frame = cv2.putText(annotated_frame, coordinate_string, (x_lower_left,y_lower_left-50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 2)
 
     else:
         annotated_frame = results[0].plot()

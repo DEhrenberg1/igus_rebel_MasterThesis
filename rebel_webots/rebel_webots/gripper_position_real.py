@@ -45,7 +45,7 @@ class GripperPositionReal():
         msg = Point()
         msg.x = position[0]
         msg.y = position[1]
-        msg.z = position[2] - 0.11 #Offset
+        msg.z = position[2] - 0.10 #Offset
         publisher.publish(msg)
     
     

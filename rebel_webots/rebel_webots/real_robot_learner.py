@@ -18,6 +18,7 @@ from std_msgs.msg import Bool
 from trajectory_msgs.msg import JointTrajectory
 from trajectory_msgs.msg import JointTrajectoryPoint
 from std_msgs.msg import Float64
+from std_msgs.msg import String
 import math
 
 
@@ -27,13 +28,13 @@ class ReinforcementLearnerEnvironment(gym.Env):
         ## Constants
         self.__neg_inf = np.finfo(np.float64).min #negative infinity
         self.__pos_inf = np.finfo(np.float64).max #positive infinity
-        self.__max_steps = 50
+        self.__max_steps = 70
         ## Observation variables
         self.__arm_positions = [0.0,0.0,0.0,0.0,0.0,0.0]
         self.__arm_velocities = [0.0,0.0,0.0,0.0,0.0,0.0]
         self.__block1_x = 0.44
         self.__block1_y = -0.13
-        self.__block1_z = 0.0275
+        self.__block1_z = 0.032
         # self.__block1_x = 0.0
         # self.__block1_y = 0.0
         # self.__block1_z = 0.0
@@ -70,7 +71,7 @@ class ReinforcementLearnerEnvironment(gym.Env):
         self.__node.create_subscription(Point, '/real/position/tool', self.__pos_tool_callback, 1)
         #self.__node.create_subscription(Point, '/real/distance', self.__distance_callback, 1)
         self.__arm_publisher = self.__node.create_publisher(JointTrajectory, '/real/joint_trajectory_controller/joint_trajectory', 10)
-        #self.__gripper_publisher = self.__node.create_publisher(JointTrajectory, '/gripper_driver/command', 10)
+        self.__gripper_publisher = self.__node.create_publisher(String, '/real/gripper_control', 10)
     
     def limitedAction(self, action):
         lim_act = [action[0], action[1], action[2], 0.0, action[3], 0.0] #limited joint velocities
@@ -90,7 +91,7 @@ class ReinforcementLearnerEnvironment(gym.Env):
         action = self.limitedAction(action)
         self.move_arm(action)
         self.__current_steps += 1
-        
+
         #Wait until move is executed.
         time.sleep(0.4)
 
@@ -107,6 +108,9 @@ class ReinforcementLearnerEnvironment(gym.Env):
         observation = {"position_block_1": pos_block1, "position_gripper": pos_gripper, "rebel_arm_position": rel_arm_pos, "rebel_arm_velocity": rel_arm_vel, "distance_to_block": self.__distance_gripper_b1}
 
         reward = 0
+
+        if self.__distance_gripper_b1 < 0.25:
+            self.move_gripper("open")
 
         if self.reached_grasp_pose(0.02,0.02,0.02):
             reward = reward + 10
@@ -128,13 +132,13 @@ class ReinforcementLearnerEnvironment(gym.Env):
                     truncated = True
         if self.__grasp_at_end_active:
             if not truncated:
-                if self.reached_grasp_pose(0.01,0.01,0.02):
-                    self.move_gripper(0.8)
+                if self.reached_grasp_pose(0.01,0.01,0.011):
+                    self.move_gripper("close")
                     time.sleep(0.4)
                     lim_act = self.limitedAction([0.0,-0.4,0.0,0.0])
-                    for _ in range(2):
+                    for _ in range(6):
                         self.move_arm(lim_act)
-                        time.sleep(0.1)
+                        time.sleep(0.5)
                     if self.__block1_z > 0.035:
                         reward = 300
                         print("Lifted!")
@@ -145,8 +149,24 @@ class ReinforcementLearnerEnvironment(gym.Env):
         info = {}
         return observation, reward, terminated, truncated, info
     
+    def move_until_position_is_reached(self, position):
+        tolerance = 0.005
+        move_command = []
+        while not move_command == [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]:
+            move_command = []
+            for i, pos in enumerate(position):
+                if pos > self.__arm_positions[i] and pos > self.__arm_positions[i] + tolerance:
+                    move_command.append(0.2)
+                elif pos < self.__arm_positions[i] and pos < self.__arm_positions[i] - tolerance:
+                    move_command.append(-0.2)
+                else:
+                    move_command.append(0.0)
+            self.move_arm(move_command)
+            print(move_command)
+            time.sleep(0.1)
+    
     def simulation_reset (self):
-        self.__arm_positions = [0.0,0.0,0.0,0.0,0.0,0.0]
+        #self.__arm_positions = [0.0,0.0,0.0,0.0,0.0,0.0]
         self.__arm_velocities = [0.0,0.0,0.0,0.0,0.0,0.0]
         #self.__block1_x = 0.0
         #self.__block1_y = 0.0
@@ -158,8 +178,18 @@ class ReinforcementLearnerEnvironment(gym.Env):
         self.__current_steps = 0
 
         # Open Gripper
+        self.move_gripper("release")
         # Move Arm to some random new position
-        # Wait until Arm is at new position
+        j_1 = np.random.uniform(-0.5, 0.5)
+        j_2 = np.random.uniform(0.2, 0.5)
+        j_3 = np.random.uniform(0.1, 0.3)
+        j_4 = np.random.uniform(0.7, 1.4)
+        joint_reset_pos = [j_1, j_2, j_3, 0.0, j_4 , 0.0]
+        self.move_until_position_is_reached(joint_reset_pos)
+        # Place block at new random position
+        x_1 = np.random.uniform(0.4, 0.6)
+        y_1 = np.random.uniform(-0.25, 0.25)
+        input(f"Place block at {x_1},{y_1}. Press Enter, if done!")
 
         time.sleep(2) #Wait
     
@@ -201,7 +231,7 @@ class ReinforcementLearnerEnvironment(gym.Env):
     def __pos_block1_callback(self, pos):
         self.__block1_x = pos.x
         self.__block1_y = pos.y
-        self.__block1_z = pos.z
+        #self.__block1_z = pos.z
     
     def __pos_gripper_callback(self, pos):
         self.__gripper_x = pos.x
@@ -217,7 +247,7 @@ class ReinforcementLearnerEnvironment(gym.Env):
     #     self.__distance_gripper_b2 = pos.z
     
     def move_arm(self, velocities):
-        scaled_vel = [x * 12.5 for x in velocities] #Scale up velocity for real robot
+        scaled_vel = [x * 25 for x in velocities] #Scale up velocity for real robot
         msg = JointTrajectory()
         msg.joint_names = ['joint1', 'joint2', 'joint3', 'joint4', 'joint5', 'joint6']
         point = JointTrajectoryPoint()
@@ -226,13 +256,10 @@ class ReinforcementLearnerEnvironment(gym.Env):
         msg.points.append(point)
         self.__arm_publisher.publish(msg)
     
-    # def move_gripper(self, pos):
-    #     msg = JointTrajectory()
-    #     msg.joint_names = ['left_finger_joint']
-    #     point = JointTrajectoryPoint()
-    #     point.positions = [pos]
-    #     msg.points.append(point)
-    #     self.__gripper_publisher.publish(msg)
+    def move_gripper(self, state):
+        msg = String()
+        msg.data = state
+        self.__gripper_publisher.publish(msg)
     
     ##Function to compute the distance:
 
@@ -353,6 +380,7 @@ def main(args = None):
     Thread(target = updater, args = [env._ReinforcementLearnerEnvironment__node]).start() #Spin Node to update values
     env._ReinforcementLearnerEnvironment__distance_reward_active = False
     env._ReinforcementLearnerEnvironment__start_close_to_goal_active = False
+    env._ReinforcementLearnerEnvironment__grasp_at_end_active = True
     ##Learn position model:
     # modelname = "distance_reward_active_"
     # number_of_models = 2
@@ -372,7 +400,7 @@ def main(args = None):
     vec_env = model.get_env()
     obs = vec_env.reset()
     done = False
-    while not done:
+    while True:
         action, _states = model.predict(obs)
         obs, rewards, done, info = vec_env.step(action)
 

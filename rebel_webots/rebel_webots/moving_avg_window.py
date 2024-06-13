@@ -42,9 +42,14 @@ class JointStateFilter(Node):
             self.__arm_positions = []
             self.__arm_velocities = []
             for i in range(6):
-                ind = arm_name.index("joint" + str(i+1))
-                self.__arm_positions.append(joint_state.position[ind])
-                self.__arm_velocities.append(joint_state.velocity[ind])
+                if i == 0:
+                    ind = arm_name.index("joint" + str(i+1))
+                    self.__arm_positions.append(joint_state.position[ind] + 0.132)
+                    self.__arm_velocities.append(joint_state.velocity[ind])
+                elif True:
+                    ind = arm_name.index("joint" + str(i+1))
+                    self.__arm_positions.append(joint_state.position[ind])
+                    self.__arm_velocities.append(joint_state.velocity[ind])
             
             self.__last_win_size_pos.append(self.__arm_positions)
             if len(self.__last_win_size_pos) > self.window_size:
