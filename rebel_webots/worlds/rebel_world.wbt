@@ -69,8 +69,24 @@ DEF block2_solid Solid {
   physics Physics {
   }
 }
+DEF block3_solid Solid {
+  translation 0.0 0.0 0.02
+  contactMaterial "b3"
+  children [
+    DEF block2 Shape {
+      appearance PBRAppearance {
+        baseColor 0.87 0.8 0.53
+      }
+      geometry Box {
+        size 0.2 0.5 0.04
+      }
+    }
+  ]
+  name "block3"
+  boundingObject USE block3
+}
 DEF igus_rebel IgusRebel {
-  translation 0.0 0.0 0.14
+  translation 0.0 0.0 0.04
   name "igus_rebel"
   controller "<extern>"
   supervisor TRUE

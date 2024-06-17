@@ -43,7 +43,7 @@ class ObjectPositionPublisher():
         msg = Point()
         msg.x = position[0]
         msg.y = position[1]
-        msg.z = position[2] - 0.1
+        msg.z = position[2]
         publisher.publish(msg)
     
     def __compute_distance(self):
@@ -69,7 +69,7 @@ class ObjectPositionPublisher():
             y_1 = np.random.uniform(-0.25, 0.25)
 
             translation_b1 = self.__block1.getField('translation')
-            translation_b1.setSFVec3f([x_1, y_1, (0.0275 + 0.1)])
+            translation_b1.setSFVec3f([x_1, y_1, 0.0275])
             # Always rotate in direction of (0,0,0) for better grasping chances:
             angle = np.arctan((y_1/x_1))
             rotation_b1 = self.__block1.getField('rotation')
@@ -117,8 +117,8 @@ class ObjectPositionPublisher():
         self.__compute_gripper_pinch_pos()
         self.publish_position(self.__pinch_pos, self.__pub3)
         #self.publish_position(self.__gripper.getPosition(), self.__pub3)
-        self.__compute_distance()
-        self.__publish_distance()
+        #self.__compute_distance()
+        #self.__publish_distance()
         self.__publish_simulation_time()
 
 def main(args=None):
