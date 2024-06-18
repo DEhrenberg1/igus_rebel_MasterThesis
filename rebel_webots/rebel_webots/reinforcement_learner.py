@@ -47,10 +47,9 @@ class ReinforcementLearnerEnvironment(gym.Env):
         self.__joint_state_set = False
         self.__pos_gripper_set = False
         self.__sim_time = 0.0
-        self.__sim_time_set = False
-        self.__start_time = 0.0
-        self.__reached_grasp_pos = False
-        self.__grasped = False
+        self.__reached_pose_above_block = False
+
+        self.__safety_distance_ground = 0.03 #The safety distance from the pinch position to the ground in meters
 
         self.__distance_reward_active = False #Set this to true to activate a small distance based reward
         self.__dont_move_block_active = False #Set this to true if you want the episode to end when the block was moved
@@ -126,24 +125,42 @@ class ReinforcementLearnerEnvironment(gym.Env):
         observation = {"position_block_1": pos_block1, "position_gripper": self.__gripper_pos, "rebel_arm_position": rel_arm_pos, "rebel_arm_velocity": rel_arm_vel, "distance_to_block": self.__distance_gripper_b1}
 
         reward = 0
-        if self.reached_grasp_pose(0.02,0.02,0.02):
-            reward = reward + 10
-            print("Hurra!")
-        if self.reached_grasp_pose(0.01,0.01,0.01):
-            reward = reward + 15
-            print("Double Hurra!")
+        
+        dist_above_b1 = self.compute_distance_gripper_above_b1() #Distance from gripper to position above block1
 
-        if self.__distance_reward_active:
-            if self.__distance_gripper_b1 < 1:
-                distance_reward = (10 ** (-1 * int(10*self.__distance_gripper_b1))) * 10
-                reward = reward + distance_reward
-        
+        if not self.__reached_pose_above_block and self.__distance_reward_active:
+                if dist_above_b1 < 1:
+                    distance_reward = (10 ** (-1 * int(10*dist_above_b1))) * 10
+                    reward = reward + distance_reward
+
+        if self.reached_pose_above_block(0.02,0.02,0.02) and not self.__reached_pose_above_block:
+            reward = reward + 10
+            #self.__reached_pose_above_block = True
+            print("Reached pose above grasp pose")
+        if self.reached_pose_above_block(0.01,0.01,0.01) and not self.__reached_pose_above_block:
+            reward = reward + 15
+
+        if self.__reached_pose_above_block:
+            if self.reached_grasp_pose(0.02,0.02,0.02):
+                reward = reward + 10
+                print("Hurra!")
+            if self.reached_grasp_pose(0.01,0.01,0.01):
+                reward = reward + 15
+                print("Double Hurra!")
+
+            if self.__distance_reward_active:
+                if self.__distance_gripper_b1 < 0.1:
+                    distance_reward = (10 ** (-1 * int(100*self.__distance_gripper_b1))) * 100 
+                    reward = reward + distance_reward
+    
         terminated = False
+        #End episode after max number of steps
         truncated = True if (self.__current_steps>=self.__max_steps) else False
-        reward = reward - 0.5 if (self.__gripper_pos[2] <= 0.03) else reward
-        truncated = True if (self.__gripper_pos[2] <= 0.03) else truncated
+        #End episode if gripper too close to the ground
+        reward = reward - 0.5 if (self.__gripper_pos[2] <= self.__safety_distance_ground) else reward
+        truncated = True if (self.__gripper_pos[2] <= self.__safety_distance_ground) else truncated
         
-        #reset if block was moved too much
+        ##Reset if block was moved too much
         if self.__dont_move_block_active:
             for i in range(3):
                 if abs(pos_block1[i] - self.__block1_initial[i]) > 0.005:
@@ -181,8 +198,7 @@ class ReinforcementLearnerEnvironment(gym.Env):
         self.__distance_gripper_b2 = self.__pos_inf
         self.__distance_b1_b2 = self.__pos_inf
         self.__current_steps = 0
-        self.__reached_grasp_pos = False
-        self.__grasped = False
+        self.__reached_pose_above_block = False
 
         msg = Bool()
         msg.data = True
@@ -266,9 +282,22 @@ class ReinforcementLearnerEnvironment(gym.Env):
     def compute_distance_gripper_b1(self):
         dist = math.sqrt((self.__gripper_pos[0] - self.__block1_x)**2 + (self.__gripper_pos[1] - self.__block1_y)**2 + (self.__gripper_pos[2] - self.__block1_z)**2)
         return dist
+
+    def compute_distance_gripper_above_b1(self):
+        dist = math.sqrt((self.__gripper_pos[0] - self.__block1_x)**2 + (self.__gripper_pos[1] - self.__block1_y)**2 + ((self.__gripper_pos[2] - 0.05) - self.__block1_z)**2)
+        return dist
     
     ##Functions used to compute the reward from the observation:
     
+    def reached_pose_above_block(self, x_offset, y_offset, z_offset):
+        #returns true if a plausible pose above the grasp pose is reached (where plausible is defined by the offset)
+        #This is meant to ensure that the gripper does not move the block sideways
+        check_x = abs(self.__block1_x - self.__gripper_pos[0]) < x_offset
+        check_y = abs(self.__block1_y - self.__gripper_pos[1]) < y_offset
+        check_z = abs(self.__block1_z + 0.05 - self.__gripper_pos[2]) < z_offset
+
+        return (check_x and check_y and check_z)
+
     def reached_grasp_pose(self, x_offset, y_offset, z_offset):
         #returns true if a plausible grasp pose is reached (where plausible is defined by the offset)
         check_x = abs(self.__block1_x - self.__gripper_pos[0]) < x_offset
@@ -279,8 +308,8 @@ class ReinforcementLearnerEnvironment(gym.Env):
 
 def learn_position(model_name, number_of_models, env):
     #Number of total_timesteps:
-    high_act_noise_timesteps = 20000
-    reduced_act_noise_timesteps_per_iteration = 20000
+    high_act_noise_timesteps = 30000
+    reduced_act_noise_timesteps_per_iteration = 30000
     low_act_noise_timeteps = 100000
     # The noise object for DDPG
     action_noise = NormalActionNoise(mean=np.zeros(4,), sigma=0.5 * np.ones(4,))
@@ -383,8 +412,8 @@ def main(args = None):
     env._ReinforcementLearnerEnvironment__dont_move_block_active = False 
     env._ReinforcementLearnerEnvironment__grasp_at_end_active = False 
 
-    ##Learn position model:
-    # modelname = "minimize_distance_elevated_"
+    # ##Learn position model:
+    # modelname = "get_in_pose_above"
     # number_of_models = 2
     # learn_position(model_name=modelname, number_of_models=number_of_models, env = env)
 
@@ -392,8 +421,8 @@ def main(args = None):
     # model = DDPG.load("exact_position_learner_gui_true_0_8_trained_1")
     # test_grasp_from_position_learner(model = model, env = env)
 
-    ##Test model:
-    model = DDPG.load("minimize_distance_1_8.zip")
+    #Test model:
+    model = DDPG.load("get_in_pose_above1_8.zip")
     test_model(model = model, env = env)
     
 
