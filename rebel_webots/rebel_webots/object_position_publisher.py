@@ -111,7 +111,7 @@ class ObjectPositionPublisher():
     def step(self):
         rclpy.spin_once(self.__node, timeout_sec=0)
         pos = self.__block1.getPosition()
-        pos[2] = pos[2] + 0.0275
+        pos[2] = pos[2] + 0.015
         self.publish_position(pos, self.__pub1)
         self.publish_position(self.__block2.getPosition(), self.__pub2)
         self.__compute_gripper_pinch_pos()
