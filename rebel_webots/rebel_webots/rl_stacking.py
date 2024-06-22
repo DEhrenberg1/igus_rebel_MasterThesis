@@ -1,14 +1,18 @@
 import gymnasium as gym
 import numpy as np
 import rclpy
+from rclpy.executors import MultiThreadedExecutor
 from gymnasium import spaces
 from stable_baselines3 import DDPG
 from stable_baselines3 import PPO
 from stable_baselines3.common.noise import NormalActionNoise, OrnsteinUhlenbeckActionNoise
+from reinforcement_learner import ReinforcementLearnerEnvironment
+from rl_grasp_pose import RL_grasp_pose
 #from controller import Supervisor
 from stable_baselines3.common.logger import configure
 import time
 import pandas as pd
+import threading
 from threading import Thread
 import math
 ##Ros2 Message Types
@@ -20,9 +24,8 @@ from trajectory_msgs.msg import JointTrajectory
 from trajectory_msgs.msg import JointTrajectoryPoint
 from std_msgs.msg import Float64
 
-
-class ReinforcementLearnerEnvironment(gym.Env):
-    def __init__(self):
+class RL_placing(gym.Env):
+    def __init__(self, above_model_name, above_model_env, grasp_model_name, grasp_model_env):
         super().__init__
         ## Constants
         self.__neg_inf = np.finfo(np.float64).min #negative infinity
@@ -48,7 +51,10 @@ class ReinforcementLearnerEnvironment(gym.Env):
         self.__pos_gripper_set = False
         self.__sim_time = 0.0
         self.__reached_pose_above_block = False
-
+        self.__above_model_name = above_model_name
+        self.__above_model = DDPG.load(above_model_name, above_model_env)
+        self.__grasp_model_name = grasp_model_name
+        self.__grasp_model = DDPG.load(grasp_model_name, grasp_model_env)
         self.__safety_distance_ground = 0.03 #The safety distance from the pinch position to the ground in meters
 
         self.__distance_reward_active = False #Set this to true to activate a small distance based reward
@@ -63,14 +69,14 @@ class ReinforcementLearnerEnvironment(gym.Env):
             {
                 "rebel_arm_position": spaces.Box(self.__neg_inf, self.__pos_inf, shape= (4,), dtype=np.float64),
                 "rebel_arm_velocity": spaces.Box(-1.1, 1.1, shape = (4,), dtype=np.float64),
-                "position_block_1": spaces.Box(-3, 3, shape = (3,), dtype=np.float64),
+                "position_block_2": spaces.Box(-3, 3, shape = (3,), dtype=np.float64),
                 "position_gripper": spaces.Box(-3, 3, shape = (3,), dtype=np.float64),
                 "distance_to_block" : spaces.Box(0, self.__pos_inf, shape = (1,), dtype=np.float64)
             }
         )
         self.__current_steps = 0
         ## ROS2 Stuff
-        self.__node = rclpy.create_node('reinforcement_learner')
+        self.__node = rclpy.create_node('rl_placing')
         self.__node.create_subscription(JointState, '/joint_states', self.__joint_state_callback, 1)
         self.__node.create_subscription(Point, '/position/block1', self.__pos_block1_callback, 1)
         self.__node.create_subscription(Point, '/position/block2', self.__pos_block2_callback, 1)
@@ -100,13 +106,13 @@ class ReinforcementLearnerEnvironment(gym.Env):
         if self.__current_steps == 1:
             self.__start_time = self.__sim_time
 
-        self.__distance_gripper_b1 = self.compute_distance_gripper_b1()
-        wait_time = 8
-        if self.__distance_gripper_b1 <= 0.3:
-            wait_time = 4
-        if self.__distance_gripper_b1 <= 0.1:
+        self.__distance_gripper_b2 = self.compute_distance_gripper_b2()
+        wait_time = 4
+        if self.__distance_gripper_b2 <= 0.05:
+            wait_time = 3
+        if self.__distance_gripper_b2 <= 0.03:
             wait_time = 2
-        if self.__distance_gripper_b1 <= 0.05:
+        if self.__distance_gripper_b2 <= 0.02:
             wait_time = 1
         for _ in range(wait_time):
             ##Condition for when the action got executed for one simulation step
@@ -117,41 +123,25 @@ class ReinforcementLearnerEnvironment(gym.Env):
             while not action_executed:
                 action_executed = self.__pos_b1_set and self.__pos_b2_set and self.__pos_gripper_set
 
-        self.__distance_gripper_b1 = self.compute_distance_gripper_b1()
-        pos_block1 = [self.__block1_x, self.__block1_y, self.__block1_z]
+        self.__distance_gripper_b2 = self.compute_distance_gripper_b2()
+        pos_block2 = [self.__block1_x, self.__block1_y, self.__block1_z]
         rel_arm_pos = [self.__arm_positions[0],self.__arm_positions[1],self.__arm_positions[2],self.__arm_positions[4]]
         rel_arm_vel = [self.__arm_velocities[0], self.__arm_velocities[1], self.__arm_velocities[2], self.__arm_velocities[4]]
-
-        observation = {"position_block_1": pos_block1, "position_gripper": self.__gripper_pos, "rebel_arm_position": rel_arm_pos, "rebel_arm_velocity": rel_arm_vel, "distance_to_block": self.__distance_gripper_b1}
+        observation = {"position_block_2": pos_block2, "position_gripper": self.__gripper_pos, "rebel_arm_position": rel_arm_pos, "rebel_arm_velocity": rel_arm_vel, "distance_to_block": self.__distance_gripper_b2}
 
         reward = 0
-        
-        dist_above_b1 = self.compute_distance_gripper_above_b1() #Distance from gripper to position above block1
-
-        if not self.__reached_pose_above_block and self.__distance_reward_active:
-                if dist_above_b1 < 1:
-                    distance_reward = (10 ** (-1 * int(10*dist_above_b1))) * 10
-                    reward = reward + distance_reward
-
-        if self.reached_pose_above_block(0.02,0.02,0.02) and not self.__reached_pose_above_block:
+        print(self.__distance_gripper_b2)
+        if self.reached_place_pose(0.02,0.02,0.02):
             reward = reward + 10
-            #self.__reached_pose_above_block = True
-            #print("Reached pose above grasp pose")
-        if self.reached_pose_above_block(0.01,0.01,0.01) and not self.__reached_pose_above_block:
-            reward = reward + 15
-
-        if self.__reached_pose_above_block:
-            if self.reached_grasp_pose(0.02,0.02,0.02):
-                reward = reward + 10
-                #print("Hurra!")
-            if self.reached_grasp_pose(0.01,0.01,0.01):
-                reward = reward + 15
-                #print("Double Hurra!")
-
-            if self.__distance_reward_active:
-                if self.__distance_gripper_b1 < 0.1:
-                    distance_reward = (10 ** (-1 * int(100*self.__distance_gripper_b1))) * 100 
-                    reward = reward + distance_reward
+            print("Hurra!")
+        if self.reached_place_pose(0.01,0.01,0.01):
+            reward = reward + 100
+            print("Double Hurra!")
+        
+        if self.__distance_reward_active:
+            if self.__distance_gripper_b2 < 1.0:
+                distance_reward = (10 ** (-1 * int(10*self.__distance_gripper_b1))) * 5
+                reward = reward + distance_reward
     
         terminated = False
         #End episode after max number of steps
@@ -159,82 +149,50 @@ class ReinforcementLearnerEnvironment(gym.Env):
         #End episode if gripper too close to the ground
         reward = reward - 0.5 if (self.__gripper_pos[2] <= self.__safety_distance_ground) else reward
         truncated = True if (self.__gripper_pos[2] <= self.__safety_distance_ground) else truncated
-        
-        ##Reset if block was moved too much
-        if self.__dont_move_block_active:
-            for i in range(3):
-                if abs(pos_block1[i] - self.__block1_initial[i]) > 0.005:
-                    truncated = True
-        if self.__grasp_at_end_active:
-            if not truncated:
-                if self.reached_grasp_pose(0.01,0.01,0.02):
-                    self.move_gripper(0.8)
-                    time.sleep(0.4)
-                    lim_act = self.limitedAction([0.0,-0.4,0.0,0.0])
-                    for _ in range(2):
-                        self.move_arm(lim_act)
-                        time.sleep(0.1)
-                    if self.__block1_z > 0.035:
-                        reward = 300
-                        print("Lifted!")
-                    terminated = True
 
         if truncated:
             print(self.__current_steps)
         info = {}
         return observation, reward, terminated, truncated, info
     
-    def simulation_reset (self):
-        self.__arm_positions = [0.0,0.0,0.0,0.0,0.0,0.0]
-        self.__arm_velocities = [0.0,0.0,0.0,0.0,0.0,0.0]
-        old_b1x = self.__block1_x
-        old_b1y = self.__block1_y
-        old_b1z = self.__block1_z
-        old_b2x = self.__block2_x
-        old_b2y = self.__block2_y
-        old_b2z = self.__block2_z
-        self.__gripper_pos = [0.0, 0.0, 0.0] #xyz
-        self.__distance_gripper_b1 = 2.0
-        self.__distance_gripper_b2 = self.__pos_inf
-        self.__distance_b1_b2 = self.__pos_inf
-        self.__current_steps = 0
-        self.__reached_pose_above_block = False
-
-        msg = Bool()
-        msg.data = True
-        self.reset_publisher.publish(msg)
-        #Wait until world is reset and we know the new position of the blocks
-        while(self.__block1_x == old_b1x and self.__block1_y == old_b1y):
-            time.sleep(0.01)
-        
-        time.sleep(0.1) #Wait until simulation is stable
-    
     def reset (self, seed=None, options=None):
-        super().reset(seed=seed)
-        print("simulation will be reset")
-        self.simulation_reset()
-        self.__distance_gripper_b1 = self.compute_distance_gripper_b1()
-        if self.__start_close_to_goal_active:
-            while(self.__distance_gripper_b1 > 0.35):
-                print("reset cause too far away")
-                self.simulation_reset()
 
-        self.__distance_gripper_b1 = self.compute_distance_gripper_b1()
-        self.__block1_initial = [self.__block1_x, self.__block1_y, self.__block1_z]
-        pos_block1 = [self.__block1_x, self.__block1_y, self.__block1_z]
+        self.__current_steps = 0
+        
+        ## Move in position above grasp:
+        vec_env = self.__above_model.get_env()
+        obs = vec_env.reset()
+        done = False
+        rewards_0 = 0
+        rewards_1 = 0
+        rewards_2 = 0
+        # wait until 3 consecutive steps in above pose:
+        while rewards_0 < 20 and rewards_1 < 20 and rewards_2 < 20:
+            action, _states = self.__above_model.predict(obs)
+            obs, rewards, done, info = vec_env.step(action)
+            rewards_2 = rewards_1
+            rewards_1 = rewards_0
+            rewards_0 = rewards
+
+        ## Move in grasp position
+        vec_env = self.__grasp_model.get_env()
+        obs = vec_env.reset()
+        done = False
+        # wait until in 1cm box around grasp position
+        rewards = 0
+        while rewards<100:
+            action, _states = self.__grasp_model.predict(obs)
+            obs, rewards, done, info = vec_env.step(action)
+        
+        ## Return observations for RL
+        self.__distance_gripper_b2 = self.compute_distance_gripper_b2()
+        pos_block2 = [self.__block2_x, self.__block2_y, self.__block2_z]
 
         rel_arm_pos = [self.__arm_positions[0],self.__arm_positions[1],self.__arm_positions[2],self.__arm_positions[4]]
         rel_arm_vel = [self.__arm_velocities[0], self.__arm_velocities[1], self.__arm_velocities[2], self.__arm_velocities[4]]
-        observation = {"position_block_1": pos_block1, "position_gripper": self.__gripper_pos, "rebel_arm_position": rel_arm_pos, "rebel_arm_velocity": rel_arm_vel, "distance_to_block": self.__distance_gripper_b1}
+        observation = {"position_block_2": pos_block2, "position_gripper": self.__gripper_pos, "rebel_arm_position": rel_arm_pos, "rebel_arm_velocity": rel_arm_vel, "distance_to_block": self.__distance_gripper_b2}
         info = {}
         return observation, info
-    
-    #Not sure if these functions are needed.
-    #def render(self):
-    #    pass
-
-    #def close(self):
-    #    pass
 
     ## The Functions below are used for ROS2-Communication:
     def __joint_state_callback(self, joint_state):
@@ -277,10 +235,14 @@ class ReinforcementLearnerEnvironment(gym.Env):
         msg.points.append(point)
         self.__gripper_publisher.publish(msg)
 
-    ##Function used to compute distance:
+    ##Functions used to compute distance:
 
     def compute_distance_gripper_b1(self):
         dist = math.sqrt((self.__gripper_pos[0] - self.__block1_x)**2 + (self.__gripper_pos[1] - self.__block1_y)**2 + (self.__gripper_pos[2] - self.__block1_z)**2)
+        return dist
+    
+    def compute_distance_gripper_b2(self):
+        dist = math.sqrt((self.__gripper_pos[0] - self.__block2_x)**2 + (self.__gripper_pos[1] - self.__block2_y)**2 + (self.__gripper_pos[2] - self.__block2_z)**2)
         return dist
 
     def compute_distance_gripper_above_b1(self):
@@ -297,6 +259,15 @@ class ReinforcementLearnerEnvironment(gym.Env):
         check_z = abs(self.__block1_z + 0.05 - self.__gripper_pos[2]) < z_offset
 
         return (check_x and check_y and check_z)
+    
+    def reached_place_pose(self, x_offset, y_offset, z_offset):
+        #return true if a plausible placing pose is reached (where plausible is defined by the offset)
+        check_x = abs(self.__block2_x - self.__gripper_pos[0]) < x_offset
+        check_y = abs(self.__block2_y - self.__gripper_pos[1]) < y_offset
+        check_z = abs(self.__block2_z + 0.05 - self.__gripper_pos[2]) < z_offset
+
+        return (check_x and check_y and check_z)
+
 
     def reached_grasp_pose(self, x_offset, y_offset, z_offset):
         #returns true if a plausible grasp pose is reached (where plausible is defined by the offset)
@@ -308,8 +279,8 @@ class ReinforcementLearnerEnvironment(gym.Env):
 
 def learn_position(model_name, number_of_models, env):
     #Number of total_timesteps:
-    high_act_noise_timesteps = 30000
-    reduced_act_noise_timesteps_per_iteration = 30000
+    high_act_noise_timesteps = 10000
+    reduced_act_noise_timesteps_per_iteration = 10000
     low_act_noise_timeteps = 100000
     # The noise object for DDPG
     action_noise = NormalActionNoise(mean=np.zeros(4,), sigma=0.5 * np.ones(4,))
@@ -384,46 +355,67 @@ def test_grasp_from_position_learner(model, env):
             action, _states = model.predict(obs)
             obs, rewards, done, info = vec_env.step(action)
             reward = reward + rewards
-            if reward > 10:
+            if rewards > 100:
                 env.move_gripper(0.8)
                 time.sleep(0.4)
                 for _ in range(15):
                     lim_act = env.limitedAction([0.0,-0.4,0.0,0.0])
                     env.move_arm(lim_act)
                     time.sleep(0.1)
-                if env._ReinforcementLearnerEnvironment__block1_z > 0.05:
+                if env._RL_grasp_pose__block1_z > 0.1:
                     succeed = succeed + 1
                 obs = vec_env.reset()
                 reward = 0
                 done = True
         print("Success rate: " + str(succeed/trials) + ", Trials: " + str(trials))
 
+
+lock = threading.Lock()
+
 def updater(node):
     while True:
         rclpy.spin(node)
 
+
 def main(args = None):
     ## Initialisitation
     rclpy.init(args=args)
-    env = ReinforcementLearnerEnvironment()
-    Thread(target = updater, args = [env._ReinforcementLearnerEnvironment__node]).start() #Spin Node to update values
-    env._ReinforcementLearnerEnvironment__distance_reward_active = True
-    env._ReinforcementLearnerEnvironment__start_close_to_goal_active = False
-    env._ReinforcementLearnerEnvironment__dont_move_block_active = False 
-    env._ReinforcementLearnerEnvironment__grasp_at_end_active = False 
+    env_above_pose = ReinforcementLearnerEnvironment()
+    env_above_pose._ReinforcementLearnerEnvironment__distance_reward_active = True
+    env_above_pose._ReinforcementLearnerEnvironment__start_close_to_goal_active = False
+    env_above_pose._ReinforcementLearnerEnvironment__dont_move_block_active = False 
+    env_above_pose._ReinforcementLearnerEnvironment__grasp_at_end_active = False 
 
-    # ##Learn position model:
-    # modelname = "get_in_pose_above"
-    # number_of_models = 2
-    # learn_position(model_name=modelname, number_of_models=number_of_models, env = env)
+    env_grasp_pose = RL_grasp_pose("get_in_pose_above1_8.zip", env_above_pose)
+    env_grasp_pose._RL_grasp_pose__distance_reward_active = True
+    env_grasp_pose._RL_grasp_pose__start_close_to_goal_active = False
+    env_grasp_pose._RL_grasp_pose__dont_move_block_active = False 
+    env_grasp_pose._RL_grasp_pose__grasp_at_end_active = False
+
+    env_placing_pose = RL_placing("get_in_pose_above1_8.zip", env_above_pose, "get_in_grasp_pose1_8.zip", env_grasp_pose)
+    env_placing_pose._RL_placing__distance_reward_active = True
+    env_placing_pose._RL_placing__start_close_to_goal_active = False
+    env_placing_pose._RL_placing__grasp_at_end_active = False
+
+    ## Start spinning nodes
+    executor = MultiThreadedExecutor()
+    executor.add_node(env_above_pose._ReinforcementLearnerEnvironment__node)
+    executor.add_node(env_grasp_pose._RL_grasp_pose__node)
+    executor.add_node(env_placing_pose._RL_placing__node)
+    Thread(target = executor.spin).start()
+
+    ##Learn position model:
+    modelname = "get_in_place_pose_"
+    number_of_models = 2
+    learn_position(model_name=modelname, number_of_models=number_of_models, env = env_placing_pose)
 
     ##Test grasp success on position learner model:
-    # model = DDPG.load("exact_position_learner_gui_true_0_8_trained_1")
-    # test_grasp_from_position_learner(model = model, env = env)
+    # model = DDPG.load("get_in_grasp_pose1_8.zip")
+    # test_grasp_from_position_learner(model = model, env = env_grasp_pose)
 
-    #Test model:
-    model = DDPG.load("get_in_pose_above1_8.zip")
-    test_model(model = model, env = env)
+    # ##Test model:
+    # model = DDPG.load("get_in_grasp_pose1_8.zip")
+    # test_model(model = model, env = env_grasp_pose)
     
 
 

@@ -65,6 +65,7 @@ class ObjectPositionPublisher():
     
     def __reset_callback(self, msg):
         if msg.data:
+            ## Place block 1 randomly in following area
             x_1 = np.random.uniform(0.4, 0.6)
             y_1 = np.random.uniform(-0.25, 0.25)
 
@@ -74,9 +75,18 @@ class ObjectPositionPublisher():
             angle = np.arctan((y_1/x_1))
             rotation_b1 = self.__block1.getField('rotation')
             rotation_b1.setSFRotation([0, 0, 1, angle])
+            
+            ## Place block 2 at least 10 cm away from block 1
+            x_2 = np.random.uniform(0.4, 0.6)
+            if y_1 >= 0:
+                y_2 = np.random.uniform(-0.25, y_1-0.1)
+            else:
+                y_2 = np.random.uniform(y_1+0.1, 0.25)
+
+            z_2 = np.random.uniform(0.05, 0.1)
 
             translation_b2 = self.__block2.getField('translation')
-            translation_b2.setSFVec3f([0.8, 0.0, 0.0275])
+            translation_b2.setSFVec3f([x_2, y_2, z_2])
             rotation_b2 = self.__block2.getField('rotation')
             rotation_b2.setSFRotation([0, 0, 1, 0])
 
@@ -105,7 +115,7 @@ class ObjectPositionPublisher():
         pos = self.__gripper.getPosition()
         orientation = self.__gripper.getOrientation()
         orientation = np.reshape(orientation, (3,3))
-        offset = np.array([0,0,0.125]) #pinch position is roughly 15cm from gripper pos in z-direction in gripper coordinate system
+        offset = np.array([0,0,0.15]) #pinch position is roughly 15cm from gripper pos in z-direction in gripper coordinate system
         self.__pinch_pos = np.matmul(orientation,offset) + pos
 
     def step(self):
@@ -113,7 +123,9 @@ class ObjectPositionPublisher():
         pos = self.__block1.getPosition()
         pos[2] = pos[2] + 0.0275
         self.publish_position(pos, self.__pub1)
-        self.publish_position(self.__block2.getPosition(), self.__pub2)
+        pos2 = self.__block2.getPosition()
+        pos2[2] = pos2[2] + 0.05 #get position of top of block
+        self.publish_position(pos2, self.__pub2)
         self.__compute_gripper_pinch_pos()
         self.publish_position(self.__pinch_pos, self.__pub3)
         #self.publish_position(self.__gripper.getPosition(), self.__pub3)

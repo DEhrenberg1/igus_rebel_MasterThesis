@@ -131,10 +131,15 @@ class RL_grasp_pose(gym.Env):
 
         if self.reached_grasp_pose(0.02,0.02,0.02):
             reward = reward + 10
-            print("Hurra!")
+            #print("Hurra!")
         if self.reached_grasp_pose(0.01,0.01,0.01):
             reward = reward + 100
-            print("Double Hurra!")
+            #print("Double Hurra!")
+
+        if self.__distance_reward_active:
+            if self.__distance_gripper_b1 < 1:
+                distance_reward = (10 ** (-1 * int(10*self.__distance_gripper_b1))) * 5 
+                reward = reward + distance_reward
 
         if self.__distance_reward_active:
             if self.__distance_gripper_b1 < 0.1:

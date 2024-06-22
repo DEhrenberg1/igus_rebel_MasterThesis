@@ -45,15 +45,14 @@ DEF block1_solid Solid {
     }
   ]
   name "block1"
-  boundingObject USE block1
-  physics Physics {
-  }
+  boundingObject NULL
+  physics NULL
   recognitionColors [
     0 0 0
   ]
 }
 DEF block2_solid Solid {
-  translation 0.4 0.4 0.0275
+  translation 0.4 0.4 0.05
   contactMaterial "b2"
   children [
     DEF block2 Shape {
@@ -61,14 +60,13 @@ DEF block2_solid Solid {
         baseColor 1 0 0
       }
       geometry Box {
-        size 0.055 0.055 0.055
+        size 0.1 0.1 0.1
       }
     }
   ]
   name "block2"
-  boundingObject USE block2
-  physics Physics {
-  }
+  boundingObject NULL
+  physics NULL
 }
 DEF block3_solid Solid {
   translation 0.0 0.0 0.02
