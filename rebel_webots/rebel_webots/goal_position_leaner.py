@@ -25,7 +25,7 @@ from trajectory_msgs.msg import JointTrajectoryPoint
 from std_msgs.msg import Float64
 
 class RL_goal_position(gym.Env):
-    def __init__(self, goal_pos_reference, goal_pos_offset):
+    def __init__(self, goal_pos_reference, goal_pos_offset, sim_reset):
         # goal_pos_reference: The reference for the goal position (block1 or block2)
         # goal_pos_offset: The offset for the goal position (from block1 or block2, depending on reference)
         super().__init__
@@ -48,6 +48,7 @@ class RL_goal_position(gym.Env):
         self.__pos_b2_set = False
         self.__pos_gripper_set = False
         self.__safety_distance_ground = 0.03 #The safety distance from the pinch position to the ground in meters
+        self.simulation_reset = sim_reset
 
         self.__distance_reward_active = False #Set this to true to activate a small distance based reward
 
@@ -152,14 +153,15 @@ class RL_goal_position(gym.Env):
         self.__current_steps = 0
 
         ## Send reset-message to Webots Plugin (ObjectPositionPublisher)
-        msg = Bool()
-        msg.data = True
-        self.reset_publisher.publish(msg)
-        #Wait until world is reset and we know the new position of the blocks
-        while(self.__block1_pos == old_b1):
-            time.sleep(0.01)
+        if self.simulation_reset:
+            msg = Bool()
+            msg.data = True
+            self.reset_publisher.publish(msg)
+            #Wait until world is reset and we know the new position of the blocks
+            while(self.__block1_pos == old_b1):
+                time.sleep(0.01)
         
-        time.sleep(0.1) #Wait until simulation is stable
+            time.sleep(0.1) #Wait until simulation is stable
         
         ## Return observations for RL
         self.compute_goal_position()
@@ -240,11 +242,11 @@ class RL_goal_position(gym.Env):
 
 def learn_position(model_name, number_of_models, env):
     #Number of total_timesteps:
-    high_act_noise_timesteps = 10000
-    reduced_act_noise_timesteps_per_iteration = 10000
-    low_act_noise_timeteps = 100000
+    high_act_noise_timesteps = 500000
+    reduced_act_noise_timesteps_per_iteration = 30000
+    low_act_noise_timeteps = 150000
     # The noise object for DDPG
-    action_noise = NormalActionNoise(mean=np.zeros(4,), sigma=0.5 * np.ones(4,))
+    action_noise = NormalActionNoise(mean=np.zeros(4,), sigma=np.ones(4,))
     model = DDPG("MultiInputPolicy", env, action_noise=action_noise, verbose=1, learning_rate = 0.001, tau = 0.001, learning_starts=10000, gamma = 0.99, batch_size=32  , buffer_size= 300000, gradient_steps= 4, train_freq = (1, "episode"))
     model.set_env(env)
     for j in range(number_of_models):
@@ -270,7 +272,7 @@ def learn_position(model_name, number_of_models, env):
         #Learn with reduced action noise if model is promising:
         model = None
         for i in range(9):
-            action_noise = NormalActionNoise(mean=np.zeros(4,), sigma= 0.25 * (0.9-i/10) * np.ones(4,))
+            action_noise = NormalActionNoise(mean=np.zeros(4,), sigma= (0.9-i/10) * np.ones(4,))
             if i == 0:
                 model = DDPG.load(model_name + str(j) + ".zip", learning_starts = 0, action_noise=action_noise)
                 model.load_replay_buffer(model_name + str(j) + ".pkl")
@@ -341,26 +343,79 @@ def updater(node):
 def main(args = None):
     ## Initialisitation
     rclpy.init(args=args)
-    env = RL_goal_position("block1", [0.0, 0.0, 0.0])
-    env._RL_goal_position__distance_reward_active = True
+    env1 = RL_goal_position("block1", [0.0, 0.0, 0.05], True)
+    env1._RL_goal_position__distance_reward_active = True
+
+    env2 = RL_goal_position("block1", [0.0, 0.0, 0.0], False)
+    env2._RL_goal_position__distance_reward_active = True
+
+    env3 = RL_goal_position("block2", [0.0, 0.1, 0.05], False)
+    env3._RL_goal_position__distance_reward_active = True
+
+    env4 = RL_goal_position("block2", [0.0, 0.0, 0.05], False)
+    env4._RL_goal_position__distance_reward_active = True
 
     ## Start spinning nodes
     executor = MultiThreadedExecutor()
-    executor.add_node(env._RL_goal_position__node)
+    executor.add_node(env1._RL_goal_position__node)
+    executor.add_node(env2._RL_goal_position__node)
+    executor.add_node(env3._RL_goal_position__node)
+    executor.add_node(env4._RL_goal_position__node)
     Thread(target = executor.spin).start()
 
     ## Learn position model:
-    modelname = "get_in_goal_pose_"
-    number_of_models = 2
-    learn_position(model_name=modelname, number_of_models=number_of_models, env = env)
+    # modelname = "get_in_goal_pose_"
+    # number_of_models = 2
+    # learn_position(model_name=modelname, number_of_models=number_of_models, env = env)
 
     ##Test grasp success on position learner model:
     # model = DDPG.load("get_in_grasp_pose1_8.zip")
     # test_grasp_from_position_learner(model = model, env = env_grasp_pose)
 
     # ##Test model:
-    # model = DDPG.load("get_in_grasp_pose1_8.zip")
-    # test_model(model = model, env = env_grasp_pose)
+    model1 = DDPG.load("get_in_goal_pose_0_8.zip")
+    model1.set_env(env1)
+    model2 = DDPG.load("get_in_goal_pose_0_8.zip")
+    model2.set_env(env2)
+    model3 = DDPG.load("get_in_goal_pose_0_8.zip")
+    model3.set_env(env3)
+    model4 = DDPG.load("get_in_goal_pose_0_8.zip")
+    model4.set_env(env4)
+    vec_env1 = model1.get_env()
+    vec_env2 = model2.get_env()
+    vec_env3 = model3.get_env()
+    vec_env4 = model4.get_env()
+    while True:
+        
+        env1.simulation_reset = True
+        obs = vec_env1.reset()
+        env1.simulation_reset = False
+        done = False
+        rewards = 0
+        while not done and rewards < 15:
+            action, _states = model1.predict(obs)
+            obs, rewards, done, info = vec_env1.step(action)
+        
+        obs = vec_env2.reset()
+        done = False
+        rewards = 0
+        while not done and rewards < 100:
+            action, _states = model2.predict(obs)
+            obs, rewards, done, info = vec_env2.step(action)
+
+        obs = vec_env3.reset()
+        done = False
+        rewards = 0
+        while not done and rewards < 15:
+            action, _states = model3.predict(obs)
+            obs, rewards, done, info = vec_env3.step(action)
+        
+        obs = vec_env4.reset()
+        done = False
+        rewards = 0
+        while not done and rewards < 15:
+            action, _states = model4.predict(obs)
+            obs, rewards, done, info = vec_env4.step(action)
     
 
 
