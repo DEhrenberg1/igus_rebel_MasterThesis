@@ -242,29 +242,29 @@ class RL_goal_position(gym.Env):
 
 def learn_position(model_name, number_of_models, env):
     #Number of total_timesteps:
-    high_act_noise_timesteps = 500000
-    reduced_act_noise_timesteps_per_iteration = 30000
+    high_act_noise_timesteps = 100000
+    reduced_act_noise_timesteps_per_iteration = 50000
     low_act_noise_timeteps = 150000
-    # The noise object for DDPG
-    action_noise = NormalActionNoise(mean=np.zeros(4,), sigma=np.ones(4,))
-    model = DDPG("MultiInputPolicy", env, action_noise=action_noise, verbose=1, learning_rate = 0.001, tau = 0.001, learning_starts=10000, gamma = 0.99, batch_size=32  , buffer_size= 300000, gradient_steps= 4, train_freq = (1, "episode"))
-    model.set_env(env)
     for j in range(number_of_models):
+        # The noise object for DDPG
+        action_noise = NormalActionNoise(mean=np.zeros(4,), sigma=np.ones(4,))
+        model = DDPG("MultiInputPolicy", env, action_noise=action_noise, verbose=1, learning_rate = 0.001, tau = 0.001, learning_starts=10000, gamma = 0.99, batch_size=32  , buffer_size= 300000, gradient_steps= 4, train_freq = (1, "episode"))
+        model.set_env(env)
         # set up logger
         path = model_name + str(j) + "log"
         new_logger = configure(path, ["stdout", "csv", "tensorboard"])  
         model.set_logger(new_logger)
         # learn
-        model.learn(total_timesteps = high_act_noise_timesteps, log_interval=1)
+        model.learn(total_timesteps = high_act_noise_timesteps, log_interval=10)
         # save
         model.save(model_name + str(j))
         model.save_replay_buffer(model_name + str(j))
 
         #Do not train bad models further:
-        df = pd.read_csv(model_name + str(j) + "log" + "/progress.csv")
-        reward_column ="rollout/ep_rew_mean"
-        last_20_rewards = df[reward_column].tail(20)
-        average_reward = last_20_rewards.mean()
+        # df = pd.read_csv(model_name + str(j) + "log" + "/progress.csv")
+        # reward_column ="rollout/ep_rew_mean"
+        # last_20_rewards = df[reward_column].tail(20)
+        # average_reward = last_20_rewards.mean()
 
         # if average_reward < 1.7:
         #     continue
@@ -285,12 +285,22 @@ def learn_position(model_name, number_of_models, env):
             path = name + "log"
             new_logger = configure(path, ["stdout", "csv", "tensorboard"])  
             model.set_logger(new_logger)
-            model.learn(total_timesteps=reduced_act_noise_timesteps_per_iteration, log_interval= 10)
+            model.learn(total_timesteps=low_act_noise_timeteps, log_interval= 10)
             model.save(name)
             model.save_replay_buffer(name)
         
-        model.learn(total_timesteps=low_act_noise_timeteps, log_interval=1)
-        model.save(model_name + "final")
+        # Learn with low action noise
+        action_noise = NormalActionNoise(mean=np.zeros(4,), sigma= 0.05 * np.ones(4,))
+        model = DDPG.load(model_name + str(j) + "_" + "8.zip", learning_starts = 0, action_noise=action_noise)
+        model.load_replay_buffer(model_name + str(j) + ".pkl")
+
+        name = model_name + str(j) + "_" + "9"
+        path = name + 'log'
+
+        model.set_logger(new_logger)
+        model.learn(total_timesteps=reduced_act_noise_timesteps_per_iteration, log_interval= 10)
+        model.save(name)
+        model.save_replay_buffer(name)
 
 def test_model(model, env):
     #model = DDPG.load("exact_position_learner_gui_true_0_8_trained_1_learned_gui_false")
@@ -343,79 +353,79 @@ def updater(node):
 def main(args = None):
     ## Initialisitation
     rclpy.init(args=args)
-    env1 = RL_goal_position("block1", [0.0, 0.0, 0.05], True)
+    env1 = RL_goal_position("block1", [0.0, 0.0, 0.0], True)
     env1._RL_goal_position__distance_reward_active = True
 
-    env2 = RL_goal_position("block1", [0.0, 0.0, 0.0], False)
-    env2._RL_goal_position__distance_reward_active = True
+    # env2 = RL_goal_position("block1", [0.0, 0.0, 0.0], False)
+    # env2._RL_goal_position__distance_reward_active = True
 
-    env3 = RL_goal_position("block2", [0.0, 0.1, 0.05], False)
-    env3._RL_goal_position__distance_reward_active = True
+    # env3 = RL_goal_position("block2", [0.0, 0.1, 0.05], False)
+    # env3._RL_goal_position__distance_reward_active = True
 
-    env4 = RL_goal_position("block2", [0.0, 0.0, 0.05], False)
-    env4._RL_goal_position__distance_reward_active = True
+    # env4 = RL_goal_position("block2", [0.0, 0.0, 0.05], False)
+    # env4._RL_goal_position__distance_reward_active = True
 
     ## Start spinning nodes
     executor = MultiThreadedExecutor()
     executor.add_node(env1._RL_goal_position__node)
-    executor.add_node(env2._RL_goal_position__node)
-    executor.add_node(env3._RL_goal_position__node)
-    executor.add_node(env4._RL_goal_position__node)
+    # executor.add_node(env2._RL_goal_position__node)
+    # executor.add_node(env3._RL_goal_position__node)
+    # executor.add_node(env4._RL_goal_position__node)
     Thread(target = executor.spin).start()
 
     ## Learn position model:
-    # modelname = "get_in_goal_pose_"
-    # number_of_models = 2
-    # learn_position(model_name=modelname, number_of_models=number_of_models, env = env)
+    modelname = "get_in_goal_pose_v2_"
+    number_of_models = 2
+    learn_position(model_name=modelname, number_of_models=number_of_models, env = env1)
 
     ##Test grasp success on position learner model:
     # model = DDPG.load("get_in_grasp_pose1_8.zip")
     # test_grasp_from_position_learner(model = model, env = env_grasp_pose)
 
     # ##Test model:
-    model1 = DDPG.load("get_in_goal_pose_0_8.zip")
-    model1.set_env(env1)
-    model2 = DDPG.load("get_in_goal_pose_0_8.zip")
-    model2.set_env(env2)
-    model3 = DDPG.load("get_in_goal_pose_0_8.zip")
-    model3.set_env(env3)
-    model4 = DDPG.load("get_in_goal_pose_0_8.zip")
-    model4.set_env(env4)
-    vec_env1 = model1.get_env()
-    vec_env2 = model2.get_env()
-    vec_env3 = model3.get_env()
-    vec_env4 = model4.get_env()
-    while True:
+    # model1 = DDPG.load("get_in_goal_pose_0_8.zip")
+    # model1.set_env(env1)
+    # model2 = DDPG.load("get_in_goal_pose_0_8.zip")
+    # model2.set_env(env2)
+    # model3 = DDPG.load("get_in_goal_pose_0_8.zip")
+    # model3.set_env(env3)
+    # model4 = DDPG.load("get_in_goal_pose_0_8.zip")
+    # model4.set_env(env4)
+    # vec_env1 = model1.get_env()
+    # vec_env2 = model2.get_env()
+    # vec_env3 = model3.get_env()
+    # vec_env4 = model4.get_env()
+    # while True:
         
-        env1.simulation_reset = True
-        obs = vec_env1.reset()
-        env1.simulation_reset = False
-        done = False
-        rewards = 0
-        while not done and rewards < 15:
-            action, _states = model1.predict(obs)
-            obs, rewards, done, info = vec_env1.step(action)
+    #     env1.simulation_reset = True
+    #     obs = vec_env1.reset()
+    #     env1.simulation_reset = False
+    #     done = False
+    #     rewards = 0
+    #     while not done and rewards < 15:
+    #         action, _states = model1.predict(obs)
+    #         obs, rewards, done, info = vec_env1.step(action)
         
-        obs = vec_env2.reset()
-        done = False
-        rewards = 0
-        while not done and rewards < 100:
-            action, _states = model2.predict(obs)
-            obs, rewards, done, info = vec_env2.step(action)
+    #     obs = vec_env2.reset()
+    #     done = False
+    #     rewards = 0
+    #     while not done and rewards < 100:
+    #         action, _states = model2.predict(obs)
+    #         obs, rewards, done, info = vec_env2.step(action)
 
-        obs = vec_env3.reset()
-        done = False
-        rewards = 0
-        while not done and rewards < 15:
-            action, _states = model3.predict(obs)
-            obs, rewards, done, info = vec_env3.step(action)
+    #     obs = vec_env3.reset()
+    #     done = False
+    #     rewards = 0
+    #     while not done and rewards < 15:
+    #         action, _states = model3.predict(obs)
+    #         obs, rewards, done, info = vec_env3.step(action)
         
-        obs = vec_env4.reset()
-        done = False
-        rewards = 0
-        while not done and rewards < 15:
-            action, _states = model4.predict(obs)
-            obs, rewards, done, info = vec_env4.step(action)
+    #     obs = vec_env4.reset()
+    #     done = False
+    #     rewards = 0
+    #     while not done and rewards < 15:
+    #         action, _states = model4.predict(obs)
+    #         obs, rewards, done, info = vec_env4.step(action)
     
 
 

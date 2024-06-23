@@ -68,10 +68,16 @@ class ObjectPositionPublisher():
             ## Place block 1 randomly in following area
             x_1 = np.random.uniform(0.4, 0.6)
             y_1 = np.random.uniform(-0.25, 0.25)
-            z_1 = np.random.uniform(0.0275, 0.3)
+
+            coin_flip = np.random.choice([True,False])
+
+            if coin_flip:
+                z_1 = np.random.uniform(0.0275, 0.3)
+            else:
+                z_1 = 0.0275
 
             translation_b1 = self.__block1.getField('translation')
-            translation_b1.setSFVec3f([x_1, y_1, 0.0275])
+            translation_b1.setSFVec3f([x_1, y_1, z_1])
             # Always rotate in direction of (0,0,0) for better grasping chances:
             angle = np.arctan((y_1/x_1))
             rotation_b1 = self.__block1.getField('rotation')
