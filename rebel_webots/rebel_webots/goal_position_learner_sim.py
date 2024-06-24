@@ -19,42 +19,42 @@ class RLGoalPosition_sim(RLGoalPosition):
         super().__init__(goal_pos_reference, goal_pos_offset, sim_reset)
 
     def initializeROS2Stuff(self):
-        self.__node = rclpy.create_node('rl_placing')
-        self.__node.create_subscription(JointState, '/joint_states', self.__joint_state_callback, 1)
-        self.__node.create_subscription(Point, '/position/block1', self.__pos_block1_callback, 1)
-        self.__node.create_subscription(Point, '/position/block2', self.__pos_block2_callback, 1)
-        self.__node.create_subscription(Point, '/position/gripper', self.__pos_gripper_callback, 1)
-        self.__arm_publisher = self.__node.create_publisher(Float64MultiArray, '/joint_trajectory/command', 10)
-        self.__gripper_publisher = self.__node.create_publisher(JointTrajectory, '/gripper_driver/command', 10)
-        self.reset_publisher = self.__node.create_publisher(Bool, '/reset', 10)
+        self.node = rclpy.create_node('rl_placing')
+        self.node.create_subscription(JointState, '/joint_states', self.joint_state_callback, 1)
+        self.node.create_subscription(Point, '/position/block1', self.pos_block1_callback, 1)
+        self.node.create_subscription(Point, '/position/block2', self.pos_block2_callback, 1)
+        self.node.create_subscription(Point, '/position/gripper', self.pos_gripper_callback, 1)
+        self.arm_publisher = self.node.create_publisher(Float64MultiArray, '/joint_trajectory/command', 10)
+        self.gripper_publisher = self.node.create_publisher(JointTrajectory, '/gripper_driver/command', 10)
+        self.reset_publisher = self.node.create_publisher(Bool, '/reset', 10)
     
     def wait_for_move_execution(self):
         ## Wait until n simulation steps pass (where n is smaller when close to goal position)
         self.compute_goal_position()
-        self.__distance_gripper_goal = self.compute_distance_gripper_goal_pos()
+        self.distance_gripper_goal = self.compute_distance_gripper_goal_pos()
         wait_time = 4
-        if self.__distance_gripper_goal <= 0.05:
+        if self.distance_gripper_goal <= 0.05:
             wait_time = 3
-        if self.__distance_gripper_goal <= 0.03:
+        if self.distance_gripper_goal <= 0.03:
             wait_time = 2
-        if self.__distance_gripper_goal <= 0.02:
+        if self.distance_gripper_goal <= 0.02:
             wait_time = 1
         for _ in range(wait_time):
             ##Condition for when the action got executed for one simulation step
             action_executed = False
-            self.__pos_b1_set = False
-            self.__pos_b2_set = False
-            self.__pos_gripper_set = False
+            self.pos_b1_set = False
+            self.pos_b2_set = False
+            self.pos_gripper_set = False
             while not action_executed:
-                action_executed = self.__pos_b1_set and self.__pos_b2_set and self.__pos_gripper_set
+                action_executed = self.pos_b1_set and self.pos_b2_set and self.pos_gripper_set
     
     def reset(self, seed=None, options=None):
-        self.__current_steps = 0
-        self.__arm_positions = [0.0,0.0,0.0,0.0,0.0,0.0]
-        self.__arm_velocities = [0.0,0.0,0.0,0.0,0.0,0.0]
-        old_b1 = self.__block1_pos
-        self.__gripper_pos = [0.0, 0.0, 0.0] #xyz
-        self.__current_steps = 0
+        self.current_steps = 0
+        self.arm_positions = [0.0,0.0,0.0,0.0,0.0,0.0]
+        self.arm_velocities = [0.0,0.0,0.0,0.0,0.0,0.0]
+        old_b1 = self.block1_pos
+        self.gripper_pos = [0.0, 0.0, 0.0] #xyz
+        self.current_steps = 0
 
         ## Send reset-message to Webots Plugin (ObjectPositionPublisher)
         if self.simulation_reset:
@@ -62,7 +62,7 @@ class RLGoalPosition_sim(RLGoalPosition):
             msg.data = True
             self.reset_publisher.publish(msg)
             #Wait until world is reset and we know the new position of the blocks
-            while(self.__block1_pos == old_b1):
+            while(self.block1_pos == old_b1):
                 time.sleep(0.01)
         
             time.sleep(0.1) #Wait until simulation is stable
@@ -76,7 +76,7 @@ class RLGoalPosition_sim(RLGoalPosition):
         msg = Float64MultiArray()
         scaled_vel = [x*0.5 for x in velocities]
         msg.data = scaled_vel
-        self.__arm_publisher.publish(msg)
+        self.arm_publisher.publish(msg)
 
     def move_gripper(self, msg):
         msg = JointTrajectory()
@@ -84,7 +84,7 @@ class RLGoalPosition_sim(RLGoalPosition):
         point = JointTrajectoryPoint()
         point.positions = [msg]
         msg.points.append(point)
-        self.__gripper_publisher.publish(msg)
+        self.gripper_publisher.publish(msg)
 
 
 def updater(node):
@@ -96,23 +96,12 @@ def main(args = None):
     ## Initialisitation
     rclpy.init(args=args)
     env1 = RLGoalPosition_sim("block1", [0.0, 0.0, 0.0], True)
-    env1._RLGoalPosition_sim__distance_reward_active = True
+    env1.distance_reward_active = True
 
-    # env2 = RL_goal_position("block1", [0.0, 0.0, 0.0], False)
-    # env2._RL_goal_position__distance_reward_active = True
-
-    # env3 = RL_goal_position("block2", [0.0, 0.1, 0.05], False)
-    # env3._RL_goal_position__distance_reward_active = True
-
-    # env4 = RL_goal_position("block2", [0.0, 0.0, 0.05], False)
-    # env4._RL_goal_position__distance_reward_active = True
 
     ## Start spinning nodes
     executor = MultiThreadedExecutor()
-    executor.add_node(env1._RLGoalPosition_sim__node)
-    # executor.add_node(env2._RL_goal_position__node)
-    # executor.add_node(env3._RL_goal_position__node)
-    # executor.add_node(env4._RL_goal_position__node)
+    executor.add_node(env1.node)
     Thread(target = executor.spin).start()
 
     ## Learn position model:
