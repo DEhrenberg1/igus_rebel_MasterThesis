@@ -153,7 +153,7 @@ while True:
                     y_irl = y_irl - 30 #should be -30, for safety reasons -60 ##Should not get under 20
                     z_irl = z_irl - 10
                 if class_label == 'rubiks-cube':
-                    y_irl = y_irl + 20
+                    y_irl = y_irl + 10
                     z_irl = z_irl - 30
 
                 #publish coordinates on ROS2 topic:
