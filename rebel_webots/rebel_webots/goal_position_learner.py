@@ -251,7 +251,7 @@ class RLUtilityClass:
                 path = name + "log"
                 new_logger = configure(path, ["stdout", "csv", "tensorboard"])  
                 model.set_logger(new_logger)
-                model.learn(total_timesteps=low_act_noise_timeteps, log_interval= 10)
+                model.learn(total_timesteps=reduced_act_noise_timesteps_per_iteration, log_interval= 10)
                 model.save(name)
                 model.save_replay_buffer(name)
             
@@ -259,12 +259,13 @@ class RLUtilityClass:
             action_noise = NormalActionNoise(mean=np.zeros(4,), sigma= 0.05 * np.ones(4,))
             model = DDPG.load(model_name + str(j) + "_" + "8.zip", learning_starts = 0, action_noise=action_noise)
             model.load_replay_buffer(model_name + str(j) + ".pkl")
+            model.set_env(env)
 
             name = model_name + str(j) + "_" + "9"
             path = name + 'log'
-
+            new_logger = configure(path, ["stdout", "csv", "tensorboard"]) 
             model.set_logger(new_logger)
-            model.learn(total_timesteps=reduced_act_noise_timesteps_per_iteration, log_interval= 10)
+            model.learn(total_timesteps=low_act_noise_timeteps, log_interval= 10)
             model.save(name)
             model.save_replay_buffer(name)
 

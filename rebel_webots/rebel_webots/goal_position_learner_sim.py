@@ -4,6 +4,7 @@ import rclpy
 from rclpy.executors import MultiThreadedExecutor
 import time
 from threading import Thread
+from stable_baselines3 import DDPG
 
 #ROS2 Message Types
 from sensor_msgs.msg import JointState
@@ -105,13 +106,17 @@ def main(args = None):
     Thread(target = executor.spin).start()
 
     ## Learn position model:
-    modelname = "get_in_goal_pose_v2_"
-    number_of_models = 2
-    RLUtilityClass.learn_position(model_name=modelname, number_of_models=number_of_models, env = env1)
+    # modelname = "get_in_goal_pose_v3_"
+    # number_of_models = 2
+    # RLUtilityClass.learn_position(model_name=modelname, number_of_models=number_of_models, env = env1)
 
     ##Test grasp success on position learner model:
     # model = DDPG.load("get_in_grasp_pose1_8.zip")
     # test_grasp_from_position_learner(model = model, env = env_grasp_pose)
+
+    #Test model:
+    model = DDPG.load("get_in_goal_pose_v3_0_9.zip")
+    RLUtilityClass.test_model(model, env1)
 
     # ##Test model:
     # model1 = DDPG.load("get_in_goal_pose_0_8.zip")
