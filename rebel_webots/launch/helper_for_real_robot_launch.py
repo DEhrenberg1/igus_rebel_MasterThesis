@@ -31,6 +31,7 @@ def generate_launch_description():
     rebel_xacro_file = os.path.join(package_dir, 'urdf', 'rebel.urdf.xacro')
     urdf_output_path = os.path.join(package_dir, 'urdf', 'rebel.urdf')
     moving_avg_window_path = os.path.join(package_dir, 'rebel_webots', 'moving_avg_window.py')
+    tf_broadcaster_path = os.path.join(package_dir, 'rebel_webots', 'tf_broadcaster.py')
 
     # Generate the URDF file from the xacro file
     os.system(f"xacro {rebel_xacro_file} -o {urdf_output_path}")
@@ -57,6 +58,7 @@ def generate_launch_description():
     )
 
     moving_avg_window = ExecuteProcess(cmd = ['python3', moving_avg_window_path], output = 'screen')
+    tf_broadcaster = ExecuteProcess(cmd = ['python3', tf_broadcaster_path], output = 'screen')
 
     return LaunchDescription([
         DeclareLaunchArgument(
@@ -68,6 +70,7 @@ def generate_launch_description():
         webots._supervisor,
         rebel_webots_driver,
         moving_avg_window,
+        tf_broadcaster,
         launch.actions.RegisterEventHandler(
             event_handler=launch.event_handlers.OnProcessExit(
                 target_action=webots,
