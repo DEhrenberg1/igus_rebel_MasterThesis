@@ -44,7 +44,7 @@ class JointStateFilter(Node):
             for i in range(6):
                 if i == 0:
                     ind = arm_name.index("joint" + str(i+1))
-                    self.__arm_positions.append(joint_state.position[ind] + 0.132)
+                    self.__arm_positions.append((joint_state.position[ind] + 0.132)*-1)
                     self.__arm_velocities.append(joint_state.velocity[ind])
                 elif True:
                     ind = arm_name.index("joint" + str(i+1))
