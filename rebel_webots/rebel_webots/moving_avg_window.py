@@ -19,23 +19,6 @@ class JointStateFilter(Node):
         self.window_size = 10  # Size of the moving average window
         self.data = deque(maxlen=self.window_size)
 
-    # def listener_callback(self, msg):
-    #     # Store incoming joint states
-    #     self.data.append(msg.position)
-        
-    #     if len(self.data) == self.window_size:
-    #         # Compute moving average
-    #         avg_position = [sum(positions) / self.window_size for positions in zip(*self.data)]
-    #         # Create a new JointState message
-    #         filtered_msg = JointState()
-    #         filtered_msg.header = msg.header
-    #         filtered_msg.name = msg.name
-    #         filtered_msg.position = avg_position
-    #         filtered_msg.velocity = msg.velocity
-    #         filtered_msg.effort = msg.effort
-    #         # Publish the filtered joint states
-    #         self.publisher.publish(filtered_msg)
-
     def listener_callback(self, joint_state):
         arm_name = joint_state.name
         if len(joint_state.velocity) == 6 and len(joint_state.position) == 6:
@@ -64,9 +47,6 @@ class JointStateFilter(Node):
                 filtered_msg.effort = joint_state.effort
                 # Publish the filtered joint states
                 self.publisher.publish(filtered_msg)
-                
-        
-
 
 def main(args=None):
     rclpy.init(args=args)

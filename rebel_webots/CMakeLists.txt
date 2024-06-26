@@ -10,6 +10,7 @@ install(DIRECTORY launch
                   proto
                   urdf
                   config
+                  rebel_webots
         DESTINATION share/${PROJECT_NAME}
 )
 

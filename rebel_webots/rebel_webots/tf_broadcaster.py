@@ -5,7 +5,7 @@ from tf2_ros import TransformBroadcaster
 from geometry_msgs.msg import TransformStamped
 from tf_transformations import quaternion_from_euler
 
-class MultiFramePublisher(Node):
+class TFBroadcaster(Node):
 
     def __init__(self):
         super().__init__('tf_broadcaster')
@@ -37,7 +37,7 @@ class MultiFramePublisher(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    node = MultiFramePublisher()
+    node = TFBroadcaster()
     rclpy.spin(node)
     rclpy.shutdown()
 
