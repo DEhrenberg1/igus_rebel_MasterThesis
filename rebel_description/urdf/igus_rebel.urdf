@@ -245,13 +245,6 @@
       <inertia ixx="0.03" iyy="0.03" izz="0.03" ixy="0.0" ixz="0.0" iyz="0.0" />
     </inertial>
   </link>
-  
-  <webots>
-    <plugin type="webots_ros2_control::Ros2Control">
-      <parameters>package://rebel_webots/urdf/rebel_ros2_control_params.yaml</parameters>
-    </plugin>
-    <plugin type="rebel_webots.gripper_position_real.GripperPositionReal" />
-  </webots>
 
   <ros2_control name="WebotsControl" type="system">
     <hardware>

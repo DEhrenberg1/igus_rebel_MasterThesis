@@ -2,4 +2,15 @@
 <robot xmlns:xacro="http://wiki.ros.org/xacro"
        name="igus_rebel" >
   <xacro:include filename="$(find rebel_description)/urdf/igus_rebel_robot.urdf.xacro"/>
+  <xacro:arg name="env" default="default"/>
+
+  <xacro:if value="${env == 'real'}">
+      <webots>
+        <plugin type="webots_ros2_control::Ros2Control">
+          <parameters>package://rebel_webots/urdf/rebel_ros2_control_params.yaml</parameters>
+        </plugin>
+        <plugin type="rebel_webots.gripper_position_real.GripperPositionReal" />
+      </webots>
+  </xacro:if>
+  
 </robot>

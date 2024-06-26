@@ -34,7 +34,8 @@ def generate_launch_description():
     tf_broadcaster_path = os.path.join(package_dir, 'rebel_webots', 'tf_broadcaster.py')
 
     # Generate the URDF file from the xacro file
-    os.system(f"xacro {rebel_xacro_file} -o {urdf_output_path}")
+    env = "real"
+    os.system(f"xacro {rebel_xacro_file} env:={env} -o {urdf_output_path}")
     robot_description = urdf_output_path
     webots = WebotsLauncher(
         world=os.path.join(package_dir, 'worlds', 'rebel_world.wbt'),
