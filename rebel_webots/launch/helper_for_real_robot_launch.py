@@ -28,14 +28,13 @@ from webots_ros2_driver.wait_for_controller_connection import WaitForControllerC
 
 def generate_launch_description():
     package_dir = get_package_share_directory('rebel_webots')
-    rebel_xacro_file = os.path.join(package_dir, 'urdf', 'rebel.urdf.xacro')
+    rebel_xacro_file = os.path.join(package_dir, 'urdf', 'real_rebel.urdf.xacro')
     urdf_output_path = os.path.join(package_dir, 'urdf', 'rebel.urdf')
     moving_avg_window_path = os.path.join(package_dir, 'rebel_webots', 'moving_avg_window.py')
     tf_broadcaster_path = os.path.join(package_dir, 'rebel_webots', 'tf_broadcaster.py')
 
     # Generate the URDF file from the xacro file
-    env = "real"
-    os.system(f"xacro {rebel_xacro_file} env:={env} -o {urdf_output_path}")
+    os.system(f"xacro {rebel_xacro_file} -o {urdf_output_path}")
     robot_description = urdf_output_path
     webots = WebotsLauncher(
         world=os.path.join(package_dir, 'worlds', 'rebel_world.wbt'),
