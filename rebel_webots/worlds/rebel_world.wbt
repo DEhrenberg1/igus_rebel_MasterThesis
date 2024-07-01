@@ -45,8 +45,9 @@ DEF block1_solid Solid {
     }
   ]
   name "block1"
-  boundingObject NULL
-  physics NULL
+  boundingObject USE block1
+  physics Physics{
+  }
   recognitionColors [
     0 0 0
   ]

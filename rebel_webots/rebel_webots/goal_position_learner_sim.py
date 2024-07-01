@@ -50,6 +50,7 @@ class RLGoalPosition_sim(RLGoalPosition):
                 action_executed = self.pos_b1_set and self.pos_b2_set and self.pos_gripper_set
     
     def reset(self, seed=None, options=None):
+        print("Reset")
         self.current_steps = 0
         self.arm_positions = [0.0,0.0,0.0,0.0,0.0,0.0]
         self.arm_velocities = [0.0,0.0,0.0,0.0,0.0,0.0]
@@ -75,7 +76,7 @@ class RLGoalPosition_sim(RLGoalPosition):
     
     def move_arm(self, velocities):
         msg = Float64MultiArray()
-        scaled_vel = [x*0.5 for x in velocities]
+        scaled_vel = [x*0.25 for x in velocities]
         msg.data = scaled_vel
         self.arm_publisher.publish(msg)
 

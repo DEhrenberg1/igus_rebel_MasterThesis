@@ -35,7 +35,7 @@ class RLGoalPosition(gym.Env, ABC):
         ## Constants
         self.neg_inf = np.finfo(np.float64).min #negative infinity
         self.pos_inf = np.finfo(np.float64).max #positive infinity
-        self.max_steps = 50
+        self.max_steps = 100
         ## Observation variables
         self.arm_positions = [0.0,0.0,0.0,0.0,0.0,0.0]
         self.arm_velocities = [0.0,0.0,0.0,0.0,0.0,0.0]
@@ -314,22 +314,25 @@ class RLUtilityClass:
     def grasp(model, env):
         model.set_env(env)
         vec_env = model.get_env()
-        env.goal_pos_reference = "block1"
-        env.goal_pos_offset = [0.0, 0.0, 0.05]
-        
+        trials = 0
+        succeed = 0
         while True:
-            env.sim_reset = True
+            env.simulation_reset = True
             obs = vec_env.reset()
+            trials = trials + 1
             #Get above grasp position
             done = False
             rewards = 0
-            env.sim_reset = False #Make sure we stay in position above grasp position and do not reset
+            env.goal_pos_reference = "block1"
+            env.goal_pos_offset = [0.0, 0.0, 0.05]
+            env.simulation_reset = False #Make sure we stay in position above grasp position and do not reset
             while not done and rewards < 100:
                 action, _states = model.predict(obs)
                 obs, rewards, done, info = vec_env.step(action)
             #Get in grasp position
-            env.goal_pos_offset = [0.0, 0.0, 0.0]
+            env.goal_pos_offset = [0.0, 0.0, -0.025]
             rewards = 0
+            done = False
             while not done and rewards < 100:
                 action, _states = model.predict(obs)
                 obs, rewards, done, info = vec_env.step(action)
@@ -340,4 +343,7 @@ class RLUtilityClass:
                 lim_act = env.limitedAction([0.0,-0.4,0.0,0.0])
                 env.move_arm(lim_act)
                 time.sleep(0.1)
+            if env.block1_pos[2] > 0.1:
+                        succeed = succeed + 1
+            print("Success rate: " + str(succeed/trials) + ", Trials: " + str(trials))
             

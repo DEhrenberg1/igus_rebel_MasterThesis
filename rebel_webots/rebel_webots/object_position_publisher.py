@@ -75,7 +75,7 @@ class ObjectPositionPublisher():
                 z_1 = 0.0275
 
             translation_b1 = self.__block1.getField('translation')
-            translation_b1.setSFVec3f([x_1, y_1, z_1])
+            translation_b1.setSFVec3f([x_1, y_1, 0.0275])
             # Always rotate in direction of (0,0,0) for better grasping chances:
             angle = np.arctan((y_1/x_1))
             rotation_b1 = self.__block1.getField('rotation')
