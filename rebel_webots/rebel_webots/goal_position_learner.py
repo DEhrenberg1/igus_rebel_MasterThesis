@@ -5,8 +5,7 @@ from rclpy.executors import MultiThreadedExecutor
 from gymnasium import spaces
 from stable_baselines3 import DDPG
 from stable_baselines3 import PPO
-from stable_baselines3.common.noise import NormalActionNoise, OrnsteinUhlenbeckActionNoise
-from reinforcement_learner import ReinforcementLearnerEnvironment
+from stable_baselines3.common.noise import NormalActionNoise, OrnsteinUhlenbeckActionNoise  
 #from controller import Supervisor
 from stable_baselines3.common.logger import configure
 import time
@@ -310,3 +309,35 @@ class RLUtilityClass:
                     reward = 0
                     done = True
             print("Success rate: " + str(succeed/trials) + ", Trials: " + str(trials))
+    
+    @staticmethod
+    def grasp(model, env):
+        model.set_env(env)
+        vec_env = model.get_env()
+        env.goal_pos_reference = "block1"
+        env.goal_pos_offset = [0.0, 0.0, 0.05]
+        
+        while True:
+            env.sim_reset = True
+            obs = vec_env.reset()
+            #Get above grasp position
+            done = False
+            rewards = 0
+            env.sim_reset = False #Make sure we stay in position above grasp position and do not reset
+            while not done and rewards < 100:
+                action, _states = model.predict(obs)
+                obs, rewards, done, info = vec_env.step(action)
+            #Get in grasp position
+            env.goal_pos_offset = [0.0, 0.0, 0.0]
+            rewards = 0
+            while not done and rewards < 100:
+                action, _states = model.predict(obs)
+                obs, rewards, done, info = vec_env.step(action)
+            #Grasp and lift
+            env.move_gripper(0.8)
+            time.sleep(0.4)
+            for _ in range(15):
+                lim_act = env.limitedAction([0.0,-0.4,0.0,0.0])
+                env.move_arm(lim_act)
+                time.sleep(0.1)
+            

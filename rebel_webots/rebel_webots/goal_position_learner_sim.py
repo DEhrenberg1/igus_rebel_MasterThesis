@@ -20,7 +20,7 @@ class RLGoalPosition_sim(RLGoalPosition):
         super().__init__(goal_pos_reference, goal_pos_offset, sim_reset)
 
     def initializeROS2Stuff(self):
-        self.node = rclpy.create_node('rl_placing')
+        self.node = rclpy.create_node('rl')
         self.node.create_subscription(JointState, '/joint_states', self.joint_state_callback, 1)
         self.node.create_subscription(Point, '/position/block1', self.pos_block1_callback, 1)
         self.node.create_subscription(Point, '/position/block2', self.pos_block2_callback, 1)
@@ -79,11 +79,11 @@ class RLGoalPosition_sim(RLGoalPosition):
         msg.data = scaled_vel
         self.arm_publisher.publish(msg)
 
-    def move_gripper(self, msg):
+    def move_gripper(self, sent_msg):
         msg = JointTrajectory()
         msg.joint_names = ['left_finger_joint']
         point = JointTrajectoryPoint()
-        point.positions = [msg]
+        point.positions = [sent_msg]
         msg.points.append(point)
         self.gripper_publisher.publish(msg)
 
@@ -115,8 +115,8 @@ def main(args = None):
     # test_grasp_from_position_learner(model = model, env = env_grasp_pose)
 
     #Test model:
-    model = DDPG.load("get_in_goal_pose_v3_0_9.zip")
-    RLUtilityClass.test_model(model, env1)
+    model = DDPG.load("get_in_goal_pose_v2_0_9")
+    RLUtilityClass.grasp(model, env1)
 
     # ##Test model:
     # model1 = DDPG.load("get_in_goal_pose_0_8.zip")
