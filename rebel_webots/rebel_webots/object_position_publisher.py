@@ -31,12 +31,10 @@ class ObjectPositionPublisher():
         self.__distance_b1_b2 = 0.0
         self.__pinch_pos = [0.0, 0.0, 0.0]
         rclpy.init(args=None)
-        self.__node = rclpy.create_node('igus_webots_driver')
-        self.__pub = self.__node.create_publisher(Point, '/distance', 10)
+        self.__node = rclpy.create_node('object_position_publisher')
         self.__pub1 = self.__node.create_publisher(Point, '/position/block1', 10)
         self.__pub2 = self.__node.create_publisher(Point, '/position/block2', 10)
         self.__pub3 = self.__node.create_publisher(Point, '/position/gripper', 10)
-        self.__pub4 = self.__node.create_publisher(Float64, '/sim_time', 10)
         self.__node.create_subscription(Bool, '/reset', self.__reset_callback, 10)
 
     def publish_position(self, position, publisher):
@@ -127,18 +125,17 @@ class ObjectPositionPublisher():
 
     def step(self):
         rclpy.spin_once(self.__node, timeout_sec=0)
+        #Publish position of block1
         pos = self.__block1.getPosition()
         pos[2] = pos[2] + 0.0275
         self.publish_position(pos, self.__pub1)
+        #Publish position of block2
         pos2 = self.__block2.getPosition()
         pos2[2] = pos2[2] + 0.05 #get position of top of block
         self.publish_position(pos2, self.__pub2)
+        #Publish gripper pinch position
         self.__compute_gripper_pinch_pos()
         self.publish_position(self.__pinch_pos, self.__pub3)
-        #self.publish_position(self.__gripper.getPosition(), self.__pub3)
-        #self.__compute_distance()
-        #self.__publish_distance()
-        self.__publish_simulation_time()
 
 def main(args=None):
     rclpy.init(args=args)

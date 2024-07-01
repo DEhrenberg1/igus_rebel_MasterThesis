@@ -26,34 +26,15 @@ from webots_ros2_driver.utils import controller_url_prefix
 from webots_ros2_driver.wait_for_controller_connection import WaitForControllerConnection
 
 def get_ros2_control_spawners(*args):
-    package_dir = get_package_share_directory('rebel_webots')
-    rebel_xacro_file = os.path.join(package_dir, 'urdf', 'rebel.urdf.xacro')
-    urdf_output_path = os.path.join(package_dir, 'urdf', 'rebel.urdf')
-
-    # Generate the URDF file from the xacro file
-    os.system(f"xacro {rebel_xacro_file} -o {urdf_output_path}")
-    robot_description = urdf_output_path
-    rebel_ros2_control_params=os.path.join(package_dir, 'config', 'rebel_ros2_control_params.yaml')
-
     controller_manager_timeout = ['--controller-manager-timeout', '100']
 
-    trajectory_controller_spawner = Node(
-        package='controller_manager',
-        executable='spawner',
-        output='screen',
-        arguments=["rebel_arm_controller"] + controller_manager_timeout,
-        parameters=[
-            robot_description,
-            rebel_ros2_control_params,
-        ],
-    )
     joint_state_broadcaster_spawner = Node(
         package='controller_manager',
         executable='spawner',
         output='screen',
         arguments=['joint_state_broadcaster'] + controller_manager_timeout,
     )
-    return [trajectory_controller_spawner, joint_state_broadcaster_spawner]
+    return [joint_state_broadcaster_spawner]
 
 def generate_launch_description():
     package_dir = get_package_share_directory('rebel_webots')
@@ -69,29 +50,9 @@ def generate_launch_description():
         gui = True,
         ros2_supervisor=True
     )
-    with open(urdf_output_path, 'r') as file:
-        urdf_string = file.read()
-
-    controller_manager_timeout = ['--controller-manager-timeout', '100']
 
     rebel_ros2_control_params=os.path.join(package_dir, 'config', 'rebel_ros2_control_params.yaml')
      
-    trajectory_controller_spawner = Node(
-        package='controller_manager',
-        executable='spawner',
-        output='screen',
-        arguments=["rebel_arm_controller"] + controller_manager_timeout,
-        parameters=[
-            robot_description,
-            rebel_ros2_control_params,
-        ],
-    )
-    joint_state_broadcaster_spawner = Node(
-        package='controller_manager',
-        executable='spawner',
-        output='screen',
-        arguments=['joint_state_broadcaster'] + controller_manager_timeout,
-    )
     rebel_webots_driver = WebotsController(
         robot_name='igus_rebel',
         parameters=[
@@ -100,21 +61,6 @@ def generate_launch_description():
             rebel_ros2_control_params,
         ],
         respawn=True
-    )
-    ros_control_spawners = [trajectory_controller_spawner, joint_state_broadcaster_spawner]
-    robot_state_publisher = Node(
-        package='robot_state_publisher',
-        executable='robot_state_publisher',
-        output='screen',
-        parameters=[{'robot_description': urdf_string},
-                ],
-        remappings=[('/robot_description', '/controller_manager/robot_description')],
-    )
-
-    # Wait for the simulation to be ready to start RViz, the navigation and spawner
-    waiting_nodes = WaitForControllerConnection(
-        target_driver=rebel_webots_driver,
-        nodes_to_start=ros_control_spawners
     )
 
     return LaunchDescription([
@@ -126,8 +72,6 @@ def generate_launch_description():
         webots,
         webots._supervisor,
         rebel_webots_driver,
-        #robot_state_publisher,
-        #waiting_nodes,
         launch.actions.RegisterEventHandler(
             event_handler=launch.event_handlers.OnProcessExit(
                 target_action=webots,
