@@ -35,7 +35,7 @@ class RLGoalPosition(gym.Env, ABC):
         ## Constants
         self.neg_inf = np.finfo(np.float64).min #negative infinity
         self.pos_inf = np.finfo(np.float64).max #positive infinity
-        self.max_steps = 100
+        self.max_steps = 50
         ## Observation variables
         self.arm_positions = [0.0,0.0,0.0,0.0,0.0,0.0]
         self.arm_velocities = [0.0,0.0,0.0,0.0,0.0,0.0]
@@ -125,7 +125,7 @@ class RLGoalPosition(gym.Env, ABC):
                 reward = reward + distance_reward
         
         #Gripper to close to ground:
-        reward = reward - 0.5 if (self.gripper_pos[2] <= self.safety_distance_ground) else reward
+        reward = reward - 5 if (self.gripper_pos[2] <= self.safety_distance_ground) else reward
         return reward
     
     def compute_if_done(self):

@@ -5,6 +5,9 @@ from rclpy.executors import MultiThreadedExecutor
 import time
 from threading import Thread
 from stable_baselines3 import DDPG
+from stable_baselines3.common.logger import configure
+from stable_baselines3.common.noise import NormalActionNoise, OrnsteinUhlenbeckActionNoise  
+import numpy as np
 
 #ROS2 Message Types
 from sensor_msgs.msg import JointState
@@ -97,19 +100,29 @@ def updater(node):
 def main(args = None):
     ## Initialisitation
     rclpy.init(args=args)
-    env1 = RLGoalPosition_sim("block1", [0.0, 0.0, 0.0], True)
-    env1.distance_reward_active = True
+    env = RLGoalPosition_sim("block1", [0.0, 0.0, 0.0], True)
+    env.distance_reward_active = True
 
 
     ## Start spinning nodes
     executor = MultiThreadedExecutor()
-    executor.add_node(env1.node)
+    executor.add_node(env.node)
     Thread(target = executor.spin).start()
 
     ## Learn position model:
-    modelname = "get_in_goal_pose(-5)_v3_"
-    number_of_models = 1
-    RLUtilityClass.learn_position(model_name=modelname, number_of_models=number_of_models, env = env1)
+    model_name = "get_in_goal_pose_v11(no_gui)_0_"
+    action_noise = NormalActionNoise(mean=np.zeros(4,), sigma= 0.05 * np.ones(4,))
+    model = DDPG.load(model_name + "8.zip", learning_starts = 0, action_noise=action_noise)
+    model.load_replay_buffer(model_name + "8.pkl")
+    model.set_env(env)
+
+    name = model_name + "9"
+    path = name + 'log'
+    new_logger = configure(path, ["stdout", "csv", "tensorboard"]) 
+    model.set_logger(new_logger)
+    model.learn(total_timesteps=100000, log_interval= 10)
+    model.save(name)
+    model.save_replay_buffer(name)
 
     ##Test grasp success on position learner model:
     # model = DDPG.load("get_in_grasp_pose1_8.zip")
