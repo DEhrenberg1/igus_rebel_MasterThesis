@@ -91,7 +91,7 @@ class ObjectPositionPublisher():
             z_2 = np.random.uniform(0.05, 0.1)
 
             translation_b2 = self.__block2.getField('translation')
-            translation_b2.setSFVec3f([x_2, y_2, z_2])
+            translation_b2.setSFVec3f([x_2, y_2, 0.0275])
             rotation_b2 = self.__block2.getField('rotation')
             rotation_b2.setSFRotation([0, 0, 1, 0])
 
@@ -131,7 +131,7 @@ class ObjectPositionPublisher():
         self.publish_position(pos, self.__pub1)
         #Publish position of block2
         pos2 = self.__block2.getPosition()
-        pos2[2] = pos2[2] + 0.05 #get position of top of block
+        pos2[2] = pos2[2] + 0.0275 #get position of top of block
         self.publish_position(pos2, self.__pub2)
         #Publish gripper pinch position
         self.__compute_gripper_pinch_pos()

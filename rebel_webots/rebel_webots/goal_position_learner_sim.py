@@ -116,8 +116,8 @@ def main(args = None):
     # test_grasp_from_position_learner(model = model, env = env_grasp_pose)
 
     #Test model:
-    model = DDPG.load("get_in_goal_pose_v2_0_9")
-    RLUtilityClass.grasp(model, env1)
+    model = DDPG.load("get_in_goal_pose_v13(no_gui)_0_9")
+    RLUtilityClass.stack(model, env1)
 
     # ##Test model:
     # model1 = DDPG.load("get_in_goal_pose_0_8.zip")

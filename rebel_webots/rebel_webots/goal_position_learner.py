@@ -45,7 +45,7 @@ class RLGoalPosition(gym.Env, ABC):
         self.pos_b1_set = False
         self.pos_b2_set = False
         self.pos_gripper_set = False
-        self.safety_distance_ground = 0.03 #The safety distance from the pinch position to the ground in meters
+        self.safety_distance_ground = 0.01 #The safety distance from the pinch position to the ground in meters
         self.simulation_reset = sim_reset
 
         self.distance_reward_active = False #Set this to true to activate a small distance based reward
@@ -330,7 +330,7 @@ class RLUtilityClass:
                 action, _states = model.predict(obs)
                 obs, rewards, done, info = vec_env.step(action)
             #Get in grasp position
-            env.goal_pos_offset = [0.0, 0.0, -0.025]
+            env.goal_pos_offset = [0.0, 0.0, -0.03]
             rewards = 0
             done = False
             while not done and rewards < 100:
@@ -346,4 +346,72 @@ class RLUtilityClass:
             if env.block1_pos[2] > 0.1:
                         succeed = succeed + 1
             print("Success rate: " + str(succeed/trials) + ", Trials: " + str(trials))
-            
+
+    @staticmethod
+    def stack(model, env):
+        model.set_env(env)
+        vec_env = model.get_env()
+        trials = 0
+        succeed = 0
+        succeed_place = 0
+        while True:
+            env.simulation_reset = True
+            obs = vec_env.reset()
+            trials = trials + 1
+            #Get above grasp position
+            done = False
+            rewards = 0
+            env.goal_pos_reference = "block1"
+            env.goal_pos_offset = [0.0, 0.0, 0.05]
+            env.simulation_reset = False #Make sure we stay in position above grasp position and do not reset
+            while not done and rewards < 100:
+                action, _states = model.predict(obs)
+                obs, rewards, done, info = vec_env.step(action)
+            #Get in grasp position
+            env.goal_pos_offset = [0.0, 0.0, -0.03]
+            rewards = 0
+            done = False
+            while not done and rewards < 100:
+                action, _states = model.predict(obs)
+                obs, rewards, done, info = vec_env.step(action)
+            #Grasp and lift
+            env.move_gripper(0.8)
+            time.sleep(0.4)
+            for _ in range(15):
+                lim_act = env.limitedAction([0.0,-0.4,0.0,0.0])
+                env.move_arm(lim_act)
+                time.sleep(0.1)
+            if env.block1_pos[2] > 0.1:
+                        succeed = succeed + 1
+            print("Grasp success rate: " + str(succeed/trials) + ", Trials: " + str(trials))
+
+            env.goal_pos_reference = "block2"
+            env.goal_pos_offset = [0.0, 0.0, 0.14]
+            env.simulation_reset = False #Make sure we stay in position above place position and do not reset
+            rewards = 0
+            done = False
+            while not done and rewards < 100:
+                action, _states = model.predict(obs)
+                obs, rewards, done, info = vec_env.step(action)
+            env.goal_pos_offset = [0.0, 0.0, 0.08]
+            rewards = 0
+            done = False
+            while not done and rewards < 100:
+                action, _states = model.predict(obs)
+                obs, rewards, done, info = vec_env.step(action)
+            env.goal_pos_offset = [0.0, 0.0, 0.04]
+            rewards = 0
+            done = False
+            while not done and rewards < 100:
+                action, _states = model.predict(obs)
+                obs, rewards, done, info = vec_env.step(action)
+            #Place and move up
+            env.move_gripper(0.0)
+            time.sleep(0.4)
+            for _ in range(15):
+                lim_act = env.limitedAction([0.0,-0.4,0.0,0.0])
+                env.move_arm(lim_act)
+                time.sleep(0.1)
+            if env.block1_pos[2] > 0.07:
+                        succeed_place = succeed_place + 1
+            print("Place success rate: " + str(succeed_place/trials) + ", Trials: " + str(trials))

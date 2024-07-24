@@ -12,8 +12,9 @@ WorldInfo {
     ContactProperties {
       material1 "b1"
       material2 "ROBOTIQ gripper pad"
-      coulombFriction 100
+      coulombFriction 1000000
       maxContactJoints 100
+      rollingFriction -1 -1 -1
     }
   ]
 }
@@ -61,13 +62,14 @@ DEF block2_solid Solid {
         baseColor 1 0 0
       }
       geometry Box {
-        size 0.1 0.1 0.1
+        size 0.055 0.055 0.055
       }
     }
   ]
   name "block2"
-  boundingObject NULL
-  physics NULL
+  boundingObject USE block2
+  physics Physics{
+  }
 }
 DEF block3_solid Solid {
   translation 0.0 0.0 0.02
