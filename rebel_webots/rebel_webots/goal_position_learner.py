@@ -354,7 +354,7 @@ class RLUtilityClass:
         trials = 0
         succeed = 0
         succeed_place = 0
-        while True:
+        while trials < 100:
             env.simulation_reset = True
             obs = vec_env.reset()
             trials = trials + 1
@@ -415,3 +415,6 @@ class RLUtilityClass:
             if env.block1_pos[2] > 0.07:
                         succeed_place = succeed_place + 1
             print("Place success rate: " + str(succeed_place/trials) + ", Trials: " + str(trials))
+            with open('results.txt', 'a') as file:
+                file.write("PGrasp success rate: " + str(succeed/trials) + ", Trials: " + str(trials) + "\n")
+                file.write("Place success rate: " + str(succeed_place/trials) + ", Trials: " + str(trials) + "\n")
