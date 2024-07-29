@@ -383,38 +383,41 @@ class RLUtilityClass:
                 time.sleep(0.1)
             if env.block1_pos[2] > 0.1:
                         succeed = succeed + 1
-            print("Grasp success rate: " + str(succeed/trials) + ", Trials: " + str(trials))
 
-            env.goal_pos_reference = "block2"
-            env.goal_pos_offset = [0.0, 0.0, 0.14]
-            env.simulation_reset = False #Make sure we stay in position above place position and do not reset
-            rewards = 0
-            done = False
-            while not done and rewards < 100:
-                action, _states = model.predict(obs)
-                obs, rewards, done, info = vec_env.step(action)
-            env.goal_pos_offset = [0.0, 0.0, 0.08]
-            rewards = 0
-            done = False
-            while not done and rewards < 100:
-                action, _states = model.predict(obs)
-                obs, rewards, done, info = vec_env.step(action)
-            env.goal_pos_offset = [0.0, 0.0, 0.04]
-            rewards = 0
-            done = False
-            while not done and rewards < 100:
-                action, _states = model.predict(obs)
-                obs, rewards, done, info = vec_env.step(action)
-            #Place and move up
-            env.move_gripper(0.0)
-            time.sleep(0.4)
-            for _ in range(15):
-                lim_act = env.limitedAction([0.0,-0.4,0.0,0.0])
-                env.move_arm(lim_act)
-                time.sleep(0.1)
-            if env.block1_pos[2] > 0.07:
-                        succeed_place = succeed_place + 1
+                        env.goal_pos_reference = "block2"
+                        env.goal_pos_offset = [0.0, 0.0, 0.14]
+                        env.simulation_reset = False #Make sure we stay in position above place position and do not reset
+                        rewards = 0
+                        done = False
+                        while not done and rewards < 100:
+                            action, _states = model.predict(obs)
+                            obs, rewards, done, info = vec_env.step(action)
+                        env.goal_pos_offset = [0.0, 0.0, 0.08]
+                        rewards = 0
+                        done = False
+                        while not done and rewards < 100:
+                            action, _states = model.predict(obs)
+                            obs, rewards, done, info = vec_env.step(action)
+                        env.goal_pos_offset = [0.0, 0.0, 0.04]
+                        rewards = 0
+                        done = False
+                        while not done and rewards < 100:
+                            action, _states = model.predict(obs)
+                            obs, rewards, done, info = vec_env.step(action)
+                        #Place and move up
+                        env.move_gripper(0.0)
+                        time.sleep(0.4)
+                        for _ in range(15):
+                            lim_act = env.limitedAction([0.0,-0.4,0.0,0.0])
+                            env.move_arm(lim_act)
+                            time.sleep(0.1)
+                        if env.block1_pos[2] > 0.07:
+                                    succeed_place = succeed_place + 1
+            
+            print("Grasp success rate: " + str(succeed/trials) + ", Trials: " + str(trials))
             print("Place success rate: " + str(succeed_place/trials) + ", Trials: " + str(trials))
             with open('results.txt', 'a') as file:
                 file.write("PGrasp success rate: " + str(succeed/trials) + ", Trials: " + str(trials) + "\n")
                 file.write("Place success rate: " + str(succeed_place/trials) + ", Trials: " + str(trials) + "\n")
+            if trials > 10 and succeed == 0:
+                continue
