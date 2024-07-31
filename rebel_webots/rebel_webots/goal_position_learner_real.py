@@ -28,7 +28,6 @@ class RLGoalPosition_real(RLGoalPosition):
         self.node.create_subscription(Point, '/real/position/block2', self.pos_block2_callback, 1)
         self.node.create_subscription(Point, '/real/position/gripper', self.pos_gripper_callback, 1)
         self.arm_publisher = self.node.create_publisher(JointTrajectory, '/real/joint_trajectory_controller/joint_trajectory', 10)
-        self.gripper_publisher = self.node.create_publisher(JointTrajectory, '/gripper_driver/command', 10)
         self.gripper_publisher = self.node.create_publisher(String, '/real/gripper_control', 10)
     
     def wait_for_move_execution(self):

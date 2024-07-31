@@ -6,7 +6,6 @@ from gymnasium import spaces
 from stable_baselines3 import DDPG
 from stable_baselines3 import PPO
 from stable_baselines3.common.noise import NormalActionNoise, OrnsteinUhlenbeckActionNoise
-from reinforcement_learner import ReinforcementLearnerEnvironment
 #from controller import Supervisor
 from stable_baselines3.common.logger import configure
 import time
