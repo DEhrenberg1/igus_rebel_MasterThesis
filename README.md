@@ -6,7 +6,7 @@ Build and Source these repositories
 
 Start the necessary tools: 
 
-1. With `ros2 launch irc_ros_bringup rebel.launch.py hardware_protocol:=cri use_rviz:=false namespace:=real controller_manager_name:=/real/controller_manager` you can start the connection to the actual Igus ReBeL. If this was successful you should here a 'click' in the robot and you should be able to move the robot via the /real/joint_trajectory_controller/joint_trajectory topic.
+1. With ```ros2 launch irc_ros_bringup rebel.launch.py hardware_protocol:=cri use_rviz:=false namespace:=real controller_manager_name:=/real/controller_manager``` you can start the connection to the actual Igus ReBeL. If this was successful you should here a 'click' in the robot and you should be able to move the robot via the /real/joint_trajectory_controller/joint_trajectory topic.
    E.g.: "ros2 topic pub /real/joint_trajectory_controller/joint_trajectory trajectory_msgs/msg/JointTrajectory '{header: {stamp: {sec: 0}}, joint_names: ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6"], points: [{positions: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0], velocities: [0.0, -10.0, 0.0, 0.0, 0.0, 0.0], time_from_start: {sec: 0}}]}' --once"
 2. Launch the simulation that always keeps track of the position of the real robot and puts the robot in simulation in the same position. This is used to obtain the gripper pinch position in the real world from the simulation. You can launch this with:
    "ros2 launch rebel_webots helper_for_real_robot_launch.py". Note: This also launches the moving_avg_window.py (creates an average over the last seen joint positions and pushes them on /real/filtered_joint_states) and tf_broadcaster.py which we need for coordination transformation from the camera frame (step 3)
